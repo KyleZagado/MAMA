@@ -1,0 +1,8 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Expo: Start", "type": "shell", "command": "npx expo start", "isBackground": true, "problemMatcher": [] },
+    { "label": "Expo: Run iOS", "type": "shell", "command": "npx expo run:ios", "problemMatcher": [] },
+    { "label": "Expo: Run Android", "type": "shell", "command": "npx expo run:android", "problemMatcher": [] }
+  ]
+}
