@@ -166,6 +166,11 @@ export interface Transaction extends Timestamps {
   description: string | null;
   notes: string | null;
   attachment_uri: string | null;
+  subcategory: string | null;
+  merchant: string | null;
+  location: string | null;
+  payment_method: string | null;
+  tags: string | null;
   recurrence_rule: string | null;
 }
 

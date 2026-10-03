@@ -16,7 +16,7 @@ import { useFinance } from '../hooks/use-finance';
 import { formatMoney, minorToInput, parseMoney } from '../lib/money';
 
 export function Wallets({ session }: { session: Session }) {
-  const { wallets, totalMinor, goalMinor, isLoading } = useFinance(session.user.id, 1);
+  const { wallets, totalMinor, goalMinor, isLoading, error } = useFinance(session.user.id, 1);
   const currency = useCurrency();
   const [goalEdit, setGoalEdit] = useState<string | null>(null);
   const [savedGoal, setSavedGoal] = useState<number | null | undefined>(undefined);
@@ -55,6 +55,7 @@ export function Wallets({ session }: { session: Session }) {
           showsVerticalScrollIndicator={false}
         >
           <ScreenHeader title="Manage Wallets" />
+          {error && <Text style={formStyles.error}>{error}</Text>}
 
           <View style={styles.total}>
             <Text style={styles.totalLabel}>Total balance</Text>
@@ -67,7 +68,7 @@ export function Wallets({ session }: { session: Session }) {
               return (
                 <Pressable
                   key={wallet.id}
-                  onPress={() => router.push({ pathname: '/wallet-form', params: { id: wallet.id } })}
+                  onPress={() => router.push({ pathname: '/wallet-detail', params: { id: wallet.id } })}
                   style={({ pressed }) => [
                     styles.row,
                     index < wallets.length - 1 && styles.divider,
@@ -86,7 +87,7 @@ export function Wallets({ session }: { session: Session }) {
                       {wallet.details ? `${info.label} · ${wallet.details}` : info.label}
                     </Text>
                   </View>
-                  <Text style={styles.balance}>{formatMoney(wallet.balance_minor, { currency })}</Text>
+                  <Text style={styles.balance}>{formatMoney(wallet.balance_minor, { currency: wallet.currency })}</Text>
                   <Ionicons name="chevron-forward" size={18} color={colors.textSubtle} />
                 </Pressable>
               );

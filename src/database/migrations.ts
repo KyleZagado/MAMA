@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 6;
+const DATABASE_VERSION = 10;
 
 export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -156,6 +156,90 @@ export async function migrate(db: SQLiteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_workout_schedule_occurrences_date
       ON workout_schedule_occurrences(scheduled_date);
   `);
+  }
+
+  if (version < 7) {
+    await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS bills (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      amount_minor INTEGER NOT NULL,
+      due_date TEXT NOT NULL,
+      paid_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_bills_due_date ON bills(due_date);
+  `);
+  }
+
+  if (version < 8) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        ALTER TABLE transactions ADD COLUMN subcategory TEXT;
+        ALTER TABLE transactions ADD COLUMN merchant TEXT;
+        ALTER TABLE transactions ADD COLUMN location TEXT;
+        ALTER TABLE transactions ADD COLUMN payment_method TEXT;
+        ALTER TABLE transactions ADD COLUMN tags TEXT;
+        PRAGMA user_version = 8;
+      `);
+    });
+  }
+
+  if (version < 9) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS income_schedules (
+          id TEXT PRIMARY KEY NOT NULL,
+          name TEXT NOT NULL,
+          amount_minor INTEGER NOT NULL CHECK (amount_minor > 0),
+          account_id TEXT NOT NULL REFERENCES accounts(id),
+          category_id TEXT NOT NULL,
+          frequency TEXT NOT NULL,
+          start_date TEXT NOT NULL,
+          month_days TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          deleted_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS income_receipts (
+          schedule_id TEXT NOT NULL REFERENCES income_schedules(id),
+          due_date TEXT NOT NULL,
+          transaction_id TEXT NOT NULL UNIQUE REFERENCES transactions(id),
+          PRIMARY KEY (schedule_id, due_date)
+        );
+        PRAGMA user_version = 9;
+      `);
+    });
+  }
+
+  if (version < 10) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        ALTER TABLE tasks ADD COLUMN due_time TEXT;
+        ALTER TABLE tasks ADD COLUMN end_time TEXT;
+        ALTER TABLE tasks ADD COLUMN all_day INTEGER NOT NULL DEFAULT 1;
+        ALTER TABLE tasks ADD COLUMN subtasks TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE tasks ADD COLUMN photos TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE tasks ADD COLUMN links TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE tasks ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE tasks ADD COLUMN color TEXT;
+        ALTER TABLE tasks ADD COLUMN location TEXT;
+        ALTER TABLE tasks ADD COLUMN estimated_minutes INTEGER;
+        ALTER TABLE tasks ADD COLUMN actual_minutes INTEGER;
+        ALTER TABLE tasks ADD COLUMN archived_at INTEGER;
+        ALTER TABLE tasks ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+        UPDATE tasks SET all_day = 0 WHERE start_time IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_tasks_date ON tasks(due_date, sort_order);
+        CREATE TABLE IF NOT EXISTS task_undo (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          label TEXT NOT NULL,
+          before_rows TEXT NOT NULL,
+          after_rows TEXT NOT NULL
+        );
+        PRAGMA user_version = 10;
+      `);
+    });
   }
 
   await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);

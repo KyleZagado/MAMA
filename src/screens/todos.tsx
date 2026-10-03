@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
-import React, { useMemo, useState } from 'react';
+import { router } from 'expo-router';
+import React, { useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Keyboard,
   Platform,
   Pressable,
@@ -16,10 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { ProfileButton } from '../components/profile-button';
+import { Chip, ChipRow } from '../components/form';
 import { PickerField } from '../components/picker-field';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
-import { addTodo, deleteTodo, setTodoDone, type Todo } from '../database/todos';
+import { addTodo, setTodoDone, undoTaskAction, type Todo } from '../database/todos';
 import { useTodos } from '../hooks/use-todos';
 import {
   addDaysToKey,
@@ -73,14 +74,14 @@ function byPriorityThenTime(a: Todo, b: Todo) {
 }
 
 function byTimeThenPriority(a: Todo, b: Todo, priorityTieBreak = true) {
-  const timeA = a.start_time ?? '99:99';
-  const timeB = b.start_time ?? '99:99';
+  const timeA = a.due_time ?? a.start_time ?? '99:99';
+  const timeB = b.due_time ?? b.start_time ?? '99:99';
   if (timeA !== timeB) return timeA < timeB ? -1 : 1;
   if (priorityTieBreak) {
     const rank = (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3);
     if (rank) return rank;
   }
-  return a.created_at - b.created_at;
+  return a.sort_order - b.sort_order || a.created_at - b.created_at;
 }
 
 function byDateThenTime(a: Todo, b: Todo) {
@@ -108,6 +109,7 @@ function TaskCard({
   onMenu: () => void;
 }) {
   const done = todo.status === 'done';
+  const displayTime = todo.due_time ?? todo.start_time;
   const priority = PRIORITIES.find((item) => item.id === todo.priority) ?? PRIORITIES[1];
   return (
     <View style={[styles.task, done && styles.taskDone]}>
@@ -121,18 +123,20 @@ function TaskCard({
       >
         {done && <Ionicons name="checkmark" size={16} color={colors.onPrimary} />}
       </Pressable>
-      <View style={styles.taskBody}>
+      <Pressable style={styles.taskBody} onPress={onMenu} accessibilityRole="button" accessibilityLabel={`Edit ${todo.title}`}>
         <Text style={[styles.taskTitle, done && styles.strike]} numberOfLines={1}>
           {todo.title}
         </Text>
         <View style={styles.taskMeta}>
-          <View style={[styles.dot, { backgroundColor: categoryColor(todo.category) }]} />
+          <View style={[styles.dot, { backgroundColor: todo.color ?? categoryColor(todo.category) }]} />
           <Text style={styles.taskSubtitle} numberOfLines={1}>
             {subtitle}
+            {todo.status === 'in_progress' ? ' · In Progress' : ''}
+            {todo.subtasks.length ? ` · ${todo.subtasks.filter((item) => item.done).length}/${todo.subtasks.length}` : ''}
           </Text>
         </View>
-      </View>
-      {todo.start_time && <Text style={styles.taskTime}>{formatTimeKey(todo.start_time)}</Text>}
+      </Pressable>
+      {displayTime && <Text style={styles.taskTime}>{formatTimeKey(displayTime)}</Text>}
       <View style={[styles.pill, { backgroundColor: priority.background }, done && styles.fade]}>
         <Text style={[styles.pillText, { color: priority.color }]}>{priority.label}</Text>
       </View>
@@ -144,7 +148,9 @@ function TaskCard({
 }
 
 export function Todos({ session }: { session: Session }) {
-  const { todos, error, reload } = useTodos(session.user.id);
+  const { todos, error, reload, undo, isLoading } = useTodos(session.user.id);
+  const busy = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortMode>('priority');
   const [showAllWeek, setShowAllWeek] = useState(false);
@@ -172,7 +178,7 @@ export function Todos({ session }: { session: Session }) {
     const later = todos.filter((t) => t.due_date > weekEndKey).sort(byDateThenTime);
     const results = query
       ? todos
-          .filter((t) => `${t.title} ${t.category ?? ''} ${t.notes ?? ''}`.toLowerCase().includes(query))
+          .filter((t) => `${t.title} ${t.category ?? ''} ${t.notes ?? ''} ${t.tags.join(' ')}`.toLowerCase().includes(query))
           .sort(byDateThenTime)
       : [];
     return { today, week, later, results };
@@ -194,6 +200,9 @@ export function Todos({ session }: { session: Session }) {
   }
 
   async function run(action: (db: Awaited<ReturnType<typeof getDatabase>>) => Promise<unknown>) {
+    if (busy.current || isLoading) return false;
+    busy.current = true;
+    setIsSaving(true);
     try {
       setActionError(null);
       await action(await getDatabase(session.user.id));
@@ -202,6 +211,9 @@ export function Todos({ session }: { session: Session }) {
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : 'Something went wrong.');
       return false;
+    } finally {
+      busy.current = false;
+      setIsSaving(false);
     }
   }
 
@@ -229,10 +241,7 @@ export function Todos({ session }: { session: Session }) {
   }
 
   function openMenu(todo: Todo) {
-    Alert.alert(todo.title, undefined, [
-      { text: 'Delete task', style: 'destructive', onPress: () => run((db) => deleteTodo(db, todo.id)) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    router.push({ pathname: '/task-form', params: { id: todo.id } });
   }
 
   function renderCards(list: Todo[]) {
@@ -270,6 +279,11 @@ export function Todos({ session }: { session: Session }) {
         <Text style={styles.greeting}>
           {greeting(now.getHours())}, {firstName(session)}
         </Text>
+        <ChipRow>
+          <Chip label="New detailed task" selected={false} onPress={() => router.push('/task-form')} />
+          <Chip label="Manage tasks / Bulk / Drag" selected={false} onPress={() => router.push('/tasks')} />
+          {undo && <Chip label={`Undo: ${undo}`} selected={false} onPress={() => void run(undoTaskAction)} />}
+        </ChipRow>
 
         <View style={styles.search}>
           <Ionicons name="search" size={20} color={colors.textSubtle} />
@@ -320,7 +334,7 @@ export function Todos({ session }: { session: Session }) {
             </Pressable>
             <Pressable
               onPress={handleAdd}
-              disabled={!title.trim()}
+              disabled={!title.trim() || isSaving || isLoading}
               style={({ pressed }) => [
                 styles.addButton,
                 !title.trim() && styles.disabled,
@@ -328,7 +342,7 @@ export function Todos({ session }: { session: Session }) {
               ]}
               accessibilityRole="button"
             >
-              <Text style={styles.addText}>Add task</Text>
+              <Text style={styles.addText}>{isSaving ? 'Saving...' : 'Add task'}</Text>
             </Pressable>
           </View>
 

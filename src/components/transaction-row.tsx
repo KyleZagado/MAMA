@@ -5,7 +5,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { categoryInfo, type IconName } from '../constants/finance';
 import { lightColors as colors, radius, spacing } from '../constants/theme';
 import type { TransactionItem } from '../database/finance';
-import { useCurrency } from '../hooks/use-currency';
 import { formatMoney, formatWhen } from '../lib/money';
 
 function describe(item: TransactionItem): { title: string; icon: IconName } {
@@ -17,7 +16,7 @@ function describe(item: TransactionItem): { title: string; icon: IconName } {
   }
   const category = categoryInfo(item.category_id);
   return {
-    title: item.description || category?.label || (item.type === 'income' ? 'Income' : 'Expense'),
+    title: item.merchant || item.description || category?.label || (item.type === 'income' ? 'Income' : 'Expense'),
     icon: category?.icon ?? 'swap-horizontal-outline',
   };
 }
@@ -26,14 +25,17 @@ type Props = {
   item: TransactionItem;
   showDivider: boolean;
   onPress?: () => void;
+  perspectiveAccountId?: string;
 };
 
-export function TransactionRow({ item, showDivider, onPress }: Props) {
-  const currency = useCurrency();
+export function TransactionRow({ item, showDivider, onPress, perspectiveAccountId }: Props) {
+  const currency = item.wallet_currency;
   const { title, icon } = describe(item);
-  const isIncome = item.type === 'income';
+  const scopedTransfer = item.type === 'transfer' && Boolean(perspectiveAccountId);
+  const incomingTransfer = scopedTransfer && item.to_account_id === perspectiveAccountId;
+  const isIncome = item.type === 'income' || incomingTransfer;
   const amount =
-    item.type === 'expense'
+    item.type === 'expense' || (scopedTransfer && !incomingTransfer)
       ? formatMoney(-item.amount_minor, { currency })
       : formatMoney(item.amount_minor, { currency, sign: isIncome });
 
@@ -49,10 +51,14 @@ export function TransactionRow({ item, showDivider, onPress }: Props) {
       </View>
       <View style={styles.details}>
         <Text style={styles.title} numberOfLines={1}>
-          {title}
+          {scopedTransfer
+            ? `${incomingTransfer ? 'Transfer from' : 'Transfer to'} ${incomingTransfer ? item.wallet_name : item.to_wallet_name ?? 'wallet'}`
+            : title}
         </Text>
         <Text style={styles.meta} numberOfLines={1}>
           {formatWhen(item.occurred_at)} · {item.wallet_name}
+          {item.type !== 'transfer' && item.category_id ? ` · ${categoryInfo(item.category_id)?.label ?? 'Other'}` : ''}
+          {scopedTransfer && item.description ? ` · ${item.description}` : ''}
         </Text>
       </View>
       <Text style={[styles.amount, isIncome && styles.income]}>{amount}</Text>

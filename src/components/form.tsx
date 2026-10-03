@@ -7,15 +7,16 @@ export function FieldLabel({ children }: { children: string }) {
   return <Text style={styles.label}>{children}</Text>;
 }
 
-type ChipProps = { label: string; selected: boolean; onPress: () => void };
+type ChipProps = { label: string; selected: boolean; onPress: () => void; disabled?: boolean };
 
-export function Chip({ label, selected, onPress }: ChipProps) {
+export function Chip({ label, selected, onPress, disabled = false }: ChipProps) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.chip, selected && styles.chipSelected, pressed && styles.pressed]}
+      disabled={disabled}
+      style={({ pressed }) => [styles.chip, selected && styles.chipSelected, disabled && styles.disabled, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected, disabled }}
     >
       <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
     </Pressable>

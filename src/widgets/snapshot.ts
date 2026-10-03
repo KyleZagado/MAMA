@@ -59,7 +59,7 @@ export async function buildSnapshot(session: Session): Promise<WidgetSnapshot> {
     .filter((todo) => todo.status !== 'done')
     .sort(
       (a, b) =>
-        (a.start_time ?? '99:99').localeCompare(b.start_time ?? '99:99') ||
+        (a.due_time ?? a.start_time ?? '99:99').localeCompare(b.due_time ?? b.start_time ?? '99:99') ||
         (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3),
     );
   const waterMl = water.reduce((sum, entry) => sum + entry.amount_ml, 0);
@@ -70,10 +70,10 @@ export async function buildSnapshot(session: Session): Promise<WidgetSnapshot> {
     goalPercent: goalMinor ? Math.max(0, Math.min(100, Math.round((totalMinor / goalMinor) * 100))) : null,
     tasksLeft: pending.length,
     tasksTotal: today.length,
-    nextTasks: pending.slice(0, 2).map((todo) => ({
-      title: todo.title,
-      time: todo.start_time ? formatTimeKey(todo.start_time) : null,
-    })),
+    nextTasks: pending.slice(0, 2).map((todo) => {
+      const time = todo.due_time ?? todo.start_time;
+      return { title: todo.title, time: time ? formatTimeKey(time) : null };
+    }),
     waterGlasses: Math.round((waterMl / GLASS_ML) * 10) / 10,
     waterGoal: goalGlasses,
   };

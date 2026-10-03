@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { formStyles } from '../components/form';
 import { ScreenHeader } from '../components/screen-header';
 import { TransactionRow } from '../components/transaction-row';
+import { TransactionDetails } from '../components/transaction-details';
 import { lightColors as colors } from '../constants/theme';
 import { getDatabase } from '../database';
 import { deleteTransaction, type TransactionItem } from '../database/finance';
@@ -16,6 +17,7 @@ const LIMIT = 200;
 export function Transactions({ session }: { session: Session }) {
   const { transactions, isLoading, error } = useFinance(session.user.id, LIMIT);
   const [removedIds, setRemovedIds] = React.useState<string[]>([]);
+  const [selected, setSelected] = React.useState<TransactionItem | null>(null);
   const visible = transactions.filter((item) => !removedIds.includes(item.id));
 
   function confirmDelete(item: TransactionItem) {
@@ -29,6 +31,7 @@ export function Transactions({ session }: { session: Session }) {
             const db = await getDatabase(session.user.id);
             await deleteTransaction(db, item.id);
             setRemovedIds((ids) => [...ids, item.id]);
+            setSelected(null);
           } catch (e: unknown) {
             Alert.alert('Could not delete', e instanceof Error ? e.message : 'Please try again.');
           }
@@ -48,16 +51,17 @@ export function Transactions({ session }: { session: Session }) {
                 key={item.id}
                 item={item}
                 showDivider={index < visible.length - 1}
-                onPress={() => confirmDelete(item)}
+                onPress={() => setSelected(item)}
               />
             ))}
           </View>
         ) : (
           !isLoading && <Text style={styles.empty}>No transactions yet.</Text>
         )}
-        {visible.length > 0 && <Text style={styles.hint}>Tap a transaction to delete it.</Text>}
+        {visible.length > 0 && <Text style={styles.hint}>Tap a transaction to view its details and receipt.</Text>}
         {error && <Text style={formStyles.error}>{error}</Text>}
       </ScrollView>
+      <TransactionDetails item={selected} onClose={() => setSelected(null)} onDelete={confirmDelete} />
     </SafeAreaView>
   );
 }
