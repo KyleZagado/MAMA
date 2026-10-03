@@ -208,20 +208,3 @@ export function filterJournalEntries(entries: JournalEntry[], filters: JournalFi
     return true;
   });
 }
-
-export function getJournalStreak(entries: JournalEntry[], today: string) {
-  const dates = new Set(entries.map((entry) => entry.entry_date));
-  let current = dates.has(today) ? today : addDays(today, -1);
-  let streak = 0;
-  while (dates.has(current)) {
-    streak += 1;
-    current = addDays(current, -1);
-  }
-  return streak;
-}
-
-function addDays(date: string, amount: number) {
-  const [year, month, day] = date.split('-').map(Number);
-  const next = new Date(year, month - 1, day + amount);
-  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
-}

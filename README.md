@@ -36,14 +36,15 @@ saved per signed-in user on the device.
 
 ## Daily journal
 
-Swipe to **Daily Journal** to write one entry per day. Entries auto-save while
+Swipe to **Daily Journal** to write in a notebook-style page with spiral
+binding, a margin line, and ruled paper (with a dark-paper variant in dark
+mode). One entry is kept per day. Entries auto-save while
 you type, with their date and creation/update times recorded automatically.
 Use the calendar to open or create an entry for any day; marked dates contain
 saved entries. The journal supports one mood per entry (Great, Good, Okay, Sad,
 or Angry), tags, favorites, and up to five photos, including photo-only entries.
 Search words or phrases and combine mood, tag, date, and Favorites filters.
-The streak counts consecutive days ending today, or yesterday if today has not
-been journaled yet. A daily reminder can be enabled and assigned a time in the
+A daily reminder can be enabled and assigned a time in the
 journal page; notification permission is required. Android Expo Go does not
 support this app's reminder setup, so use an Android development build for
 reminders there.

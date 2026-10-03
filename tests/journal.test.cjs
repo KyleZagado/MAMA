@@ -5,7 +5,6 @@ const { loadSource, database } = require('./helpers/database.cjs');
 const { migrate } = loadSource('src/database/migrations.ts');
 const {
   filterJournalEntries,
-  getJournalStreak,
   listJournalEntries,
   loadJournalPreferences,
   saveJournalEntry,
@@ -117,15 +116,6 @@ test('journal filters search phrases, mood, tag, selected date and favorites tog
   } finally {
     native.close();
   }
-});
-
-test('journal streak uses today or yesterday and stops at the first gap', () => {
-  const entries = ['2026-10-04', '2026-10-03', '2026-10-02', '2026-09-30'].map(
-    (entry_date) => ({ entry_date }),
-  );
-  assert.equal(getJournalStreak(entries, '2026-10-04'), 3);
-  assert.equal(getJournalStreak(entries, '2026-10-05'), 3);
-  assert.equal(getJournalStreak(entries, '2026-10-06'), 0);
 });
 
 test('journal validates dates, photo count and reminder time', async () => {

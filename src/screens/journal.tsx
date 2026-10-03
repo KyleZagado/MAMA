@@ -20,13 +20,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProfileButton } from '../components/profile-button';
 import { PickerField } from '../components/picker-field';
-import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
+import { darkColors, lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import {
   deleteJournalEntry,
   draftFromEntry,
   filterJournalEntries,
   getJournalEntry,
-  getJournalStreak,
   hasJournalContent,
   JOURNAL_MOODS,
   listJournalEntries,
@@ -48,6 +47,10 @@ import { createThemedStyleSheet } from '../providers/theme-provider';
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const SUGGESTED_TAGS = ['Work', 'Family', 'Travel', 'Goals'];
+const NOTEBOOK_LINE_HEIGHT = 30;
+const SPIRAL_RINGS = 12;
+const HANDWRITING_FONT = Platform.select({ ios: 'Noteworthy', android: 'serif', default: 'Georgia, serif' });
+const SERIF_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' });
 
 function monthRange(year: number, month: number) {
   const start = new Date(year, month, 1);
@@ -122,6 +125,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
   const [saveStatus, setSaveStatus] = useState('Changes save automatically');
   const [error, setError] = useState<string | null>(null);
   const [tagText, setTagText] = useState('');
+  const [paperHeight, setPaperHeight] = useState(NOTEBOOK_LINE_HEIGHT * 8);
   const [query, setQuery] = useState('');
   const [moodFilter, setMoodFilter] = useState<JournalMood | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
@@ -162,7 +166,6 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
   const shouldShowResults =
     showFavoritesOnly ||
     Boolean(query.trim() || moodFilter || tagFilter || filterBySelectedDate);
-  const streak = useMemo(() => getJournalStreak(entries, today), [entries, today]);
   const canEditEntry = entryReady && !isLoading;
 
   const persistDraft = useCallback(async (date: string, snapshot: JournalDraft, revision: number) => {
@@ -523,23 +526,10 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
         >
           <View style={styles.header}>
             <View>
-              <Text style={styles.brand}>mama</Text>
+              <Text style={styles.brand}>mama · my notebook</Text>
               <Text style={styles.title}>Daily Journal</Text>
             </View>
             <ProfileButton session={session} />
-          </View>
-
-          <View style={styles.streakCard}>
-            <Text style={styles.streakEmoji}>🔥</Text>
-            <View style={styles.flex}>
-              <Text style={styles.streakTitle}>
-                {streak}-day streak
-              </Text>
-              <Text style={styles.streakSubtitle}>
-                {streak ? 'Keep making space for your day.' : 'Write today to start your streak.'}
-              </Text>
-            </View>
-            <Ionicons name="sparkles-outline" size={20} color={colors.accent} />
           </View>
 
           <View style={styles.filtersCard}>
@@ -731,6 +721,14 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
           )}
 
           <View style={styles.entryCard}>
+            <View style={styles.spiralRow} pointerEvents="none">
+              {Array.from({ length: SPIRAL_RINGS }, (_, index) => (
+                <View key={index} style={styles.spiralRing}>
+                  <View style={styles.spiralHole} />
+                </View>
+              ))}
+            </View>
+            <View style={styles.marginLine} pointerEvents="none" />
             <View style={styles.entryHeading}>
               <View style={styles.flex}>
                 <Text style={styles.entryDate}>{dateLabel(selectedDateKey)}</Text>
@@ -767,7 +765,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
               )}
             </View>
 
-            <Text style={styles.label}>HOW ARE YOU FEELING?</Text>
+            <Text style={styles.label}>How are you feeling?</Text>
             <View style={styles.moodGrid}>
               {JOURNAL_MOODS.map((mood) => (
                 <Pressable
@@ -787,23 +785,36 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
               ))}
             </View>
 
-            <Text style={styles.label}>YOUR ENTRY</Text>
-            <TextInput
-              value={draft.body}
-              onChangeText={(body) => updateDraft({ body })}
-              editable={canEditEntry}
-              placeholder="What would you like to remember about today?"
-              placeholderTextColor={colors.textSubtle}
-              style={styles.journalInput}
-              multiline
-              textAlignVertical="top"
-              maxLength={10000}
-              accessibilityLabel="Journal entry"
-            />
+            <Text style={styles.label}>Dear diary,</Text>
+            <View
+              style={styles.ruledPaper}
+              onLayout={(event) => setPaperHeight(event.nativeEvent.layout.height)}
+            >
+              {Array.from({ length: Math.max(1, Math.floor(paperHeight / NOTEBOOK_LINE_HEIGHT)) }, (_, index) => (
+                <View
+                  key={index}
+                  pointerEvents="none"
+                  style={[styles.ruledLine, { top: (index + 1) * NOTEBOOK_LINE_HEIGHT }]}
+                />
+              ))}
+              <TextInput
+                value={draft.body}
+                onChangeText={(body) => updateDraft({ body })}
+                editable={canEditEntry}
+                placeholder="What would you like to remember about today?"
+                placeholderTextColor={colors.textSubtle}
+                style={styles.journalInput}
+                multiline
+                scrollEnabled={false}
+                textAlignVertical="top"
+                maxLength={10000}
+                accessibilityLabel="Journal entry"
+              />
+            </View>
             <Text style={styles.saveStatus}>{saveStatus}</Text>
 
             <View style={styles.sectionHeadingRow}>
-              <Text style={styles.label}>TAGS</Text>
+              <Text style={styles.label}>Tags</Text>
               <Text style={styles.photoCount}>{draft.tags.length} tags</Text>
             </View>
             <View style={styles.tagAddRow}>
@@ -861,7 +872,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
             </View>
 
             <View style={styles.sectionHeadingRow}>
-              <Text style={styles.label}>PHOTOS</Text>
+              <Text style={styles.label}>Photos</Text>
               <Text style={styles.photoCount}>{draft.photos.length}/5</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRow}>
@@ -995,7 +1006,30 @@ function TagButton({
   );
 }
 
-const styles = createThemedStyleSheet((colors) => StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => {
+  const isDark = colors === darkColors;
+  const paper = {
+    page: isDark ? '#1E1C18' : '#FFFBEF',
+    edge: isDark ? '#34302A' : '#E8DDC3',
+    rule: isDark ? 'rgba(125, 160, 205, 0.22)' : '#CFE0EE',
+    margin: isDark ? 'rgba(235, 120, 120, 0.45)' : '#EBA9A9',
+    ink: isDark ? '#EDE6D6' : '#26365A',
+    pencil: isDark ? '#A79F8F' : '#7B7466',
+    ring: isDark ? '#8C8F96' : '#A3A7AF',
+    hole: isDark ? '#0E1512' : '#F6F8F7',
+  };
+  const paperCard = {
+    backgroundColor: paper.page,
+    borderWidth: 1,
+    borderColor: paper.edge,
+    borderRadius: radius.md,
+    shadowColor: '#000',
+    shadowOpacity: isDark ? 0.3 : 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  } as const;
+  return StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   content: {
@@ -1008,37 +1042,19 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     gap: spacing.md,
   },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: { color: colors.textMuted, fontSize: 13 },
-  title: { color: colors.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
-  streakCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.lg,
-    backgroundColor: colors.heroBackground,
-    borderRadius: radius.lg,
-  },
-  streakEmoji: { fontSize: 28 },
-  streakTitle: { color: colors.heroText, fontSize: 18, fontWeight: '800' },
-  streakSubtitle: { color: colors.heroTextMuted, fontSize: 12, marginTop: 3 },
-  filtersCard: {
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  brand: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic', fontFamily: SERIF_FONT },
+  title: { color: colors.text, fontSize: 28, fontWeight: '700', fontFamily: SERIF_FONT, marginTop: 2 },
+  filtersCard: { ...paperCard, gap: spacing.sm, padding: spacing.md },
   searchBox: {
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceAlt,
+    borderBottomWidth: 1.5,
+    borderBottomColor: paper.rule,
   },
-  searchInput: { flex: 1, color: colors.text, fontSize: 14, paddingVertical: 8 },
+  searchInput: { flex: 1, color: paper.ink, fontSize: 15, fontFamily: SERIF_FONT, paddingVertical: 8 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   filterScroll: { gap: spacing.xs, paddingVertical: 2 },
   filterButton: {
@@ -1053,13 +1069,7 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   filterButtonSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
   filterButtonText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
   filterButtonTextSelected: { color: colors.primary },
-  calendarCard: {
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  calendarCard: { ...paperCard, padding: spacing.md },
   monthHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
   monthButton: {
     width: 40,
@@ -1067,9 +1077,8 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
   },
-  monthTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
+  monthTitle: { color: paper.ink, fontSize: 19, fontWeight: '700', fontFamily: SERIF_FONT },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   weekday: { width: '14.2857%', height: 30, textAlign: 'center', textAlignVertical: 'center', color: colors.textMuted, fontSize: 11, fontWeight: '700' },
   dayCell: { width: '14.2857%', padding: 2 },
@@ -1091,43 +1100,73 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   entryDotSelected: { backgroundColor: colors.primary },
   legend: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm, minHeight: 20 },
   legendText: { flex: 1, color: colors.textSubtle, fontSize: 11 },
-  resultsCard: {
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  resultsCard: { ...paperCard, gap: spacing.sm, padding: spacing.md },
+  sectionTitle: { color: paper.ink, fontSize: 17, fontWeight: '700', fontFamily: SERIF_FONT },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: paper.rule,
   },
   resultDate: { width: 38, alignItems: 'center', paddingVertical: 4, borderRadius: radius.sm, backgroundColor: colors.primarySoft },
   resultDateDay: { color: colors.primary, fontSize: 15, fontWeight: '800' },
   resultDateMonth: { color: colors.primary, fontSize: 10, fontWeight: '600' },
-  resultTitle: { color: colors.text, fontSize: 13, fontWeight: '700' },
+  resultTitle: { color: paper.ink, fontSize: 14, fontFamily: HANDWRITING_FONT },
   resultMeta: { color: colors.textMuted, fontSize: 11, marginTop: 3 },
   emptyText: { color: colors.textMuted, fontSize: 13, paddingVertical: spacing.sm },
   entryCard: {
+    ...paperCard,
     gap: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingTop: 34,
+    paddingBottom: spacing.lg,
+    paddingLeft: 44,
+    paddingRight: spacing.md,
+    marginTop: 10,
+    overflow: 'visible',
   },
-  entryHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  entryDate: { color: colors.text, fontSize: 17, fontWeight: '800' },
-  entrySubheading: { color: colors.textSubtle, fontSize: 11, marginTop: 4 },
+  spiralRow: {
+    position: 'absolute',
+    top: -10,
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  spiralRing: {
+    width: 10,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 3,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: paper.ring,
+    backgroundColor: 'transparent',
+  },
+  spiralHole: { width: 6, height: 6, borderRadius: 3, backgroundColor: paper.hole },
+  marginLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 34,
+    width: 1.5,
+    backgroundColor: paper.margin,
+  },
+  entryHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1.5,
+    borderBottomColor: paper.margin,
+  },
+  entryDate: { color: paper.ink, fontSize: 20, fontWeight: '700', fontFamily: SERIF_FONT },
+  entrySubheading: { color: paper.pencil, fontSize: 11, fontStyle: 'italic', fontFamily: SERIF_FONT, marginTop: 4 },
   favoriteButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   deleteButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  label: { color: colors.textMuted, fontSize: 11, fontWeight: '800', letterSpacing: 0.7 },
+  label: { color: paper.pencil, fontSize: 15, fontStyle: 'italic', fontFamily: SERIF_FONT },
   moodGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.xs },
   moodButton: {
     flex: 1,
@@ -1136,26 +1175,31 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     gap: 4,
     paddingVertical: spacing.sm,
     borderRadius: radius.md,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderStyle: 'dashed',
+    borderColor: paper.edge,
   },
   moodButtonSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
   moodEmoji: { fontSize: 23 },
-  moodLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '600' },
+  moodLabel: { color: paper.pencil, fontSize: 11, fontFamily: SERIF_FONT },
   moodLabelSelected: { color: colors.primary },
+  ruledPaper: { position: 'relative', minHeight: NOTEBOOK_LINE_HEIGHT * 8 },
+  ruledLine: { position: 'absolute', left: -44, right: -spacing.md, height: 1, backgroundColor: paper.rule },
   journalInput: {
-    minHeight: 170,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
-    color: colors.text,
-    fontSize: 15,
-    lineHeight: 23,
+    minHeight: NOTEBOOK_LINE_HEIGHT * 8,
+    margin: 0,
+    paddingTop: 5,
+    paddingBottom: 0,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+    color: paper.ink,
+    fontSize: 17,
+    lineHeight: NOTEBOOK_LINE_HEIGHT,
+    fontFamily: HANDWRITING_FONT,
+    includeFontPadding: false,
   },
-  saveStatus: { alignSelf: 'flex-end', color: colors.textSubtle, fontSize: 11, marginTop: -spacing.sm },
+  saveStatus: { alignSelf: 'flex-end', color: paper.pencil, fontSize: 11, fontStyle: 'italic', fontFamily: SERIF_FONT, marginTop: -spacing.sm },
   sectionHeadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   photoCount: { color: colors.textSubtle, fontSize: 11 },
   tagAddRow: { flexDirection: 'row', gap: spacing.sm },
@@ -1163,11 +1207,11 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     flex: 1,
     minHeight: 42,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
+    borderBottomWidth: 1.5,
+    borderBottomColor: paper.rule,
+    color: paper.ink,
+    fontFamily: HANDWRITING_FONT,
+    fontSize: 15,
   },
   addButton: { width: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.primary },
   tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
@@ -1183,7 +1227,7 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   addPhotoText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
   photoOnlyHint: { color: colors.textSubtle, fontSize: 11 },
   updatedAt: { color: colors.textSubtle, fontSize: 10, textAlign: 'right' },
-  reminderCard: { gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  reminderCard: { ...paperCard, gap: spacing.md, padding: spacing.lg },
   reminderTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   reminderIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.primarySoft },
   reminderHint: { color: colors.textMuted, fontSize: 11, lineHeight: 16, marginTop: 3 },
@@ -1192,4 +1236,5 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   errorText: { color: colors.danger, fontSize: 12, lineHeight: 18 },
   retryText: { color: colors.primary, fontSize: 12, fontWeight: '700', marginTop: spacing.sm },
   errorCard: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.border },
-}));
+  });
+});
