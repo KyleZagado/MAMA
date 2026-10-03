@@ -16,12 +16,13 @@ import { lightColors as colors } from '../constants/theme';
 import { refreshWidgets } from '../widgets/refresh';
 import { Consumption } from './consumption';
 import { Dashboard } from './dashboard';
+import { Fasting } from './fasting';
 import { Fitness } from './fitness';
 import { Todos } from './todos';
 
-const PAGES = ['Wallets', 'To-do list', 'Food and water', 'Fitness'];
+const PAGES = ['Wallets', 'To-do list', 'Food and water', 'Fitness', 'Fasting Tracker'];
 
-// Swipe left to move from wallets to the to-do list and then food and water and fitness; swipe right to go back.
+// Swipe left through the main feature pages; swipe right to go back.
 export function HomePager({ session }: { session: Session }) {
   const scrollRef = useRef<ScrollView>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -78,6 +79,9 @@ export function HomePager({ session }: { session: Session }) {
           </View>
           <View style={size}>
             <Fitness session={session} />
+          </View>
+          <View style={size}>
+            <Fasting session={session} />
           </View>
         </ScrollView>
       )}

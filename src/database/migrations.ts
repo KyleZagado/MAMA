@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 13;
+const DATABASE_VERSION = 14;
 
 export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -284,6 +284,28 @@ export async function migrate(db: SQLiteDatabase) {
         INSERT OR IGNORE INTO task_lists (name)
           SELECT DISTINCT list_name FROM tasks WHERE list_name IS NOT NULL AND trim(list_name) != '';
         PRAGMA user_version = 13;
+      `);
+    });
+  }
+
+  if (version < 14) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS fasting_sessions (
+          id TEXT PRIMARY KEY NOT NULL,
+          protocol_id TEXT NOT NULL,
+          protocol_name TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK (kind IN ('fast', 'five_two')),
+          target_minutes INTEGER,
+          started_at INTEGER NOT NULL,
+          ended_at INTEGER,
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_fasting_sessions_started
+          ON fasting_sessions(started_at DESC);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_fasting_active
+          ON fasting_sessions(kind) WHERE ended_at IS NULL;
+        PRAGMA user_version = 14;
       `);
     });
   }

@@ -6,6 +6,18 @@ manually; no bank accounts or financial institutions are connected. Finance
 records, budgets, bills, and fitness schedules are stored locally on each
 signed-in user's device. Fitness includes a workout scheduler with day, week,
 and month views, recurring workouts and rest days, reminders, and workout history.
+The home carousel also includes a fasting tracker with timed protocols, custom
+fast durations, session history, and a separate 5:2 weekly check-in.
+
+## Fasting tracker
+
+Swipe to **Fasting Tracker** from the home carousel. Choose a 12:12, 14:10,
+16:8, 18:6, 20:4, OMAD, 24-hour, 36-hour, 48-hour, or custom fast and start
+the timer. Active sessions and recent history are saved locally for the signed-in
+user. Custom fasts support durations from 1 to 72 hours. The 5:2 option tracks
+two reduced-intake day check-ins per Monday–Sunday week; it is treated as a
+weekly eating pattern rather than a fixed-hour fast. Fasting is not suitable for
+everyone; seek healthcare advice before trying extended fasts.
 
 ## Quick expense entry
 
