@@ -30,7 +30,19 @@ and phase estimates are informational and do not provide medical guidance.
 
 Use **Profile → Home page sequence** to move any main page earlier or later,
 send it directly to the first or last position, or restore the default order.
-The setting is saved per signed-in user on the device.
+The default and reset order is Overview Tracker, To-do list, Wallets & finance,
+Food and water, Fitness, then Fasting Tracker. The setting is saved per
+signed-in user on the device.
+
+## Overview tracker
+
+Swipe to **Overview Tracker** for a monthly calendar combining activity from
+Wallets & finance, To-do list, Food and water, Fitness, and Fasting Tracker.
+Days with logged activity are marked in the calendar. Select a date to see its
+transactions, scheduled tasks (including recurring occurrences), meals, water
+entries, workouts, recorded activities, and fasting sessions. The calendar also
+shows a monthly activity count and the number of active days. Activity is read
+from the signed-in user's local database.
 
 ## Quick expense entry
 

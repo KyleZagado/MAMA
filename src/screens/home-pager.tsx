@@ -21,6 +21,7 @@ import { Consumption } from './consumption';
 import { Dashboard } from './dashboard';
 import { Fasting } from './fasting';
 import { Fitness } from './fitness';
+import { Overview } from './overview';
 import { Todos } from './todos';
 
 // Swipe left through the main feature pages; swipe right to go back.
@@ -89,6 +90,7 @@ export function HomePager({ session }: { session: Session }) {
     ['consumption', <Consumption key="consumption" session={session} />],
     ['fitness', <Fitness key="fitness" session={session} />],
     ['fasting', <Fasting key="fasting" session={session} />],
+    ['overview', <Overview key="overview" session={session} isVisible={pageOrder[page] === 'overview'} />],
   ]);
 
   return (

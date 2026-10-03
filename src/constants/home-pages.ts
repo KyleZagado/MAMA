@@ -1,6 +1,7 @@
 export const HOME_PAGES = [
-  { id: 'finance', label: 'Wallets & finance' },
+  { id: 'overview', label: 'Overview Tracker' },
   { id: 'todos', label: 'To-do list' },
+  { id: 'finance', label: 'Wallets & finance' },
   { id: 'consumption', label: 'Food and water' },
   { id: 'fitness', label: 'Fitness' },
   { id: 'fasting', label: 'Fasting Tracker' },
