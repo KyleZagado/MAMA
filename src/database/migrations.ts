@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 11;
+const DATABASE_VERSION = 13;
 
 export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -255,6 +255,35 @@ export async function migrate(db: SQLiteDatabase) {
           after_rows = (SELECT json_group_array(json_set(value,
             '$.recurrence_rule', NULL, '$.series_id', NULL, '$.occurrence_date', NULL)) FROM json_each(after_rows));
         PRAGMA user_version = 11;
+      `);
+    });
+  }
+
+  if (version < 12) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        ALTER TABLE tasks ADD COLUMN scheduled INTEGER NOT NULL DEFAULT 1;
+        ALTER TABLE tasks ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE tasks ADD COLUMN list_name TEXT;
+        ALTER TABLE tasks ADD COLUMN project TEXT;
+        CREATE TABLE task_lists (name TEXT PRIMARY KEY NOT NULL);
+        UPDATE task_undo SET
+          before_rows = (SELECT json_group_array(json_set(value,
+            '$.scheduled', 1, '$.favorite', 0, '$.list_name', NULL, '$.project', NULL)) FROM json_each(before_rows)),
+          after_rows = (SELECT json_group_array(json_set(value,
+            '$.scheduled', 1, '$.favorite', 0, '$.list_name', NULL, '$.project', NULL)) FROM json_each(after_rows));
+        PRAGMA user_version = 12;
+      `);
+    });
+  }
+
+  if (version < 13) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS task_lists (name TEXT PRIMARY KEY NOT NULL);
+        INSERT OR IGNORE INTO task_lists (name)
+          SELECT DISTINCT list_name FROM tasks WHERE list_name IS NOT NULL AND trim(list_name) != '';
+        PRAGMA user_version = 13;
       `);
     });
   }

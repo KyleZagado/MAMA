@@ -16,7 +16,7 @@ import { TASK_CATEGORIES, TASK_COLORS, TASK_PRIORITIES, TASK_STATUSES } from '..
 import { lightColors as colors, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
 import {
-  changeTodos, duplicateTodo, getTodo, listCalendarTodos, saveTodo, type ChecklistItem, type Todo,
+  changeTodos, duplicateTodo, getTodo, listCalendarTodos, listTaskLists, saveTodo, type ChecklistItem, type Todo,
   type TodoInput, type TodoPriority, type TodoStatus, validateTodo,
 } from '../database/todos';
 import { fromDateKey, timeKeyToDate, toDateKey, toTimeKey } from '../lib/dates';
@@ -46,6 +46,11 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
   const [category, setCategory] = useState('');
   const [color, setColor] = useState<string | null>(null);
   const [location, setLocation] = useState('');
+  const [scheduled, setScheduled] = useState(true);
+  const [favorite, setFavorite] = useState(false);
+  const [listName, setListName] = useState('');
+  const [project, setProject] = useState('');
+  const [lists, setLists] = useState<string[]>([]);
   const [estimate, setEstimate] = useState('');
   const [actual, setActual] = useState('');
   const [repeat, setRepeat] = useState<TaskRepeat['frequency'] | 'none'>('none');
@@ -56,6 +61,20 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
   const [isPicking, setIsPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const busy = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    listTaskListsAfterLoad();
+    async function listTaskListsAfterLoad() {
+      try {
+        const names = await listTaskLists(await getDatabase(session.user.id));
+        if (active) setLists(names);
+      } catch (e: unknown) {
+        if (active) setError(e instanceof Error ? e.message : 'Could not load task lists.');
+      }
+    }
+    return () => { active = false; };
+  }, [session.user.id]);
 
   useEffect(() => {
     if (!taskId) return;
@@ -89,6 +108,10 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
         setCategory(todo.category ?? '');
         setColor(todo.color);
         setLocation(todo.location ?? '');
+        setScheduled(Boolean(todo.scheduled));
+        setFavorite(Boolean(todo.favorite));
+        setListName(todo.list_name ?? '');
+        setProject(todo.project ?? '');
         setEstimate(todo.estimated_minutes == null ? '' : String(todo.estimated_minutes));
         setActual(todo.actual_minutes == null ? '' : String(todo.actual_minutes));
       } catch (e: unknown) {
@@ -142,6 +165,7 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
         priority, status, subtasks, photos: [], links: links.split('\n').map((link) => link.trim()).filter(Boolean),
         tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean), category: category || null,
         color, location, estimatedMinutes: duration(estimate), actualMinutes: duration(actual),
+        scheduled, favorite, listName, project,
         recurrenceRule: original?.series_id ? null : repeat === 'none' ? null : JSON.stringify({ frequency: repeat, weekdays }),
       };
       validateTodo(input);
@@ -205,8 +229,28 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
               <TextInput value={title} onChangeText={setTitle} maxLength={120} style={formStyles.input} placeholder="What needs to be done?" accessibilityLabel="Task title" />
               <FieldLabel>DESCRIPTION / NOTES</FieldLabel>
               <TextInput value={notes} onChangeText={setNotes} multiline maxLength={4000} style={[formStyles.input, styles.multiline]} accessibilityLabel="Task notes" />
-              <FieldLabel>DUE DATE</FieldLabel>
-              <PickerField mode="date" value={dueDate} onChange={setDueDate} />
+              {scheduled && <><FieldLabel>DUE DATE</FieldLabel>
+                <PickerField mode="date" value={dueDate} onChange={setDueDate} /></>}
+              <View style={styles.row}>
+                <Text style={styles.hint}>Scheduled date</Text>
+                <Switch value={scheduled} disabled={Boolean(original?.series_id)} onValueChange={(value) => {
+                  setScheduled(value);
+                  if (!value) setRepeat('none');
+                }} accessibilityLabel="Task has a scheduled date" />
+              </View>
+              {!scheduled && <Text style={styles.hint}>Unscheduled: hidden from date views and calendar until you schedule it.</Text>}
+              <View style={styles.row}>
+                <Text style={styles.hint}>Favorite</Text>
+                <Switch value={favorite} onValueChange={setFavorite} accessibilityLabel="Favorite task" />
+              </View>
+              <FieldLabel>MY LIST</FieldLabel>
+              <ChipRow>
+                <Chip label="No list" selected={!listName} onPress={() => setListName('')} />
+                {lists.map((name) => <Chip key={name} label={name} selected={listName === name} onPress={() => setListName(name)} />)}
+              </ChipRow>
+              <TextInput value={listName} onChangeText={setListName} maxLength={60} style={formStyles.input} placeholder="Choose above or create a named list" accessibilityLabel="Task list" />
+              <FieldLabel>PROJECT (OPTIONAL)</FieldLabel>
+              <TextInput value={project} onChangeText={setProject} maxLength={100} style={formStyles.input} accessibilityLabel="Task project" />
               {original?.series_id ? (
                 <>
                   <Text style={styles.hint}>Editing only this recurring occurrence. Other dates keep their schedule.</Text>
@@ -218,7 +262,7 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
                 <>
                   <FieldLabel>REPEAT</FieldLabel>
                   <ChipRow>{(['none', 'daily', 'weekly', 'monthly'] as const).map((option) =>
-                    <Chip key={option} label={option === 'none' ? 'Does not repeat' : option} selected={repeat === option} onPress={() => setRepeat(option)} />)}</ChipRow>
+                    <Chip key={option} label={option === 'none' ? 'Does not repeat' : option} disabled={!scheduled} selected={repeat === option} onPress={() => setRepeat(option)} />)}</ChipRow>
                   {repeat === 'weekly' && <ChipRow>{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) =>
                     <Chip key={day} label={day} selected={weekdays.includes(index)} onPress={() => setWeekdays((current) =>
                       current.includes(index) ? current.filter((item) => item !== index) : [...current, index])} />)}</ChipRow>}
@@ -229,7 +273,7 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
                 <Text style={styles.hint}>All-day task</Text>
                 <Switch value={allDay} onValueChange={setAllDay} accessibilityLabel="All-day task" />
               </View>
-              {!allDay && (
+              {scheduled && !allDay && (
                 <>
                   <TaskTime label="Due time" value={dueTime} onChange={setDueTime} />
                   <TaskTime label="Start time" value={startTime} onChange={setStartTime} />

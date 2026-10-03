@@ -23,7 +23,7 @@ test('fresh migration adds every expense field and is repeatable', async () => {
   try {
     await migrate(db);
     await migrate(db);
-    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 11);
+    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 13);
     const columns = (await db.getAllAsync('PRAGMA table_info(transactions)')).map((row) => row.name);
     for (const name of ['subcategory', 'merchant', 'notes', 'location', 'payment_method', 'attachment_uri', 'tags']) {
       assert.ok(columns.includes(name), `Missing ${name}`);
@@ -141,7 +141,7 @@ test('version 8 upgrades without altering saved expense metadata', async () => {
     await addTransaction(db, { type: 'expense', amountMinor: 100, accountId: 'cash',
       toAccountId: null, categoryId: 'food', description: '', merchant: 'Lunch shop' });
     await migrate(db);
-    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 11);
+    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 13);
     assert.equal((await listTransactions(db, 10))[0].merchant, 'Lunch shop');
     assert.deepEqual(await listIncomeSchedules(db), []);
   } finally { native.close(); }

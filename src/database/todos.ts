@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { addDaysToKey, fromDateKey, toDateKey, toTimeKey } from '../lib/dates';
 import { decodeTaskRepeat, taskRepeatDates } from '../lib/task-calendar';
+import { isTaskOverdue } from '../lib/task-organization';
 
 export type TodoStatus = 'todo' | 'in_progress' | 'done';
 export type TodoPriority = 'low' | 'medium' | 'high';
@@ -17,6 +18,7 @@ type TodoRow = {
   archived_at: number | null; sort_order: number; completed_at: number | null;
   created_at: number; updated_at: number; deleted_at: number | null;
   recurrence_rule: string | null; series_id: string | null; occurrence_date: string | null;
+  scheduled: number; favorite: number; list_name: string | null; project: string | null;
 };
 export type Todo = Omit<TodoRow, 'subtasks' | 'photos' | 'links' | 'tags'> & {
   subtasks: ChecklistItem[]; photos: string[]; links: string[]; tags: string[];
@@ -29,6 +31,7 @@ export type TodoInput = {
   color?: string | null; location?: string | null;
   estimatedMinutes?: number | null; actualMinutes?: number | null;
   recurrenceRule?: string | null;
+  scheduled?: boolean; favorite?: boolean; listName?: string | null; project?: string | null;
 };
 
 const columns = [
@@ -37,6 +40,7 @@ const columns = [
   'estimated_minutes', 'actual_minutes', 'archived_at', 'sort_order', 'completed_at',
   'created_at', 'updated_at', 'deleted_at',
   'recurrence_rule', 'series_id', 'occurrence_date',
+  'scheduled', 'favorite', 'list_name', 'project',
 ] as const;
 const select = columns.join(', ');
 
@@ -59,12 +63,12 @@ function decode(row: TodoRow): Todo {
     links: stringList(row.links, 'links'), tags: stringList(row.tags, 'tags') };
 }
 
-export async function listTodos(db: SQLiteDatabase, archived = false, expandRecurring = true) {
+export async function listTodos(db: SQLiteDatabase, archived = false, expandRecurring = true, includeUnscheduled = false) {
   const rows = await db.getAllAsync<TodoRow>(
     `SELECT ${select} FROM tasks WHERE deleted_at IS NULL AND archived_at IS ${archived ? 'NOT NULL' : 'NULL'}
      ORDER BY due_date ASC, sort_order ASC, created_at ASC, id ASC`,
   );
-  const decoded = rows.map(decode);
+  const decoded = rows.map(decode).filter((task) => archived || includeUnscheduled || task.scheduled);
   if (archived || !expandRecurring) return decoded;
   const today = toDateKey(new Date());
   const repeating = (await listCalendarTodos(db, addDaysToKey(today, -30), addDaysToKey(today, 365)))
@@ -93,6 +97,9 @@ export function validateTodo(input: TodoInput) {
   if (!input.title.trim()) throw new Error('Enter a task title.');
   validateDate(input.dueDate);
   decodeTaskRepeat(input.recurrenceRule ?? null);
+  if (input.scheduled === false && input.recurrenceRule) {
+    throw new Error('Recurring tasks need a scheduled date. Turn off repeat before removing the date.');
+  }
   if (!['low', 'medium', 'high'].includes(input.priority) ||
       !['todo', 'in_progress', 'done'].includes(input.status ?? 'todo')) {
     throw new Error('Choose a valid priority and status.');
@@ -147,6 +154,9 @@ export async function saveTodo(
       `SELECT ${select} FROM tasks WHERE id = ? AND deleted_at IS NULL`, id,
     ) : null;
     if (id && !existing) throw new Error('This task is no longer available.');
+    if (input.scheduled === false && (occurrence || existing?.series_id)) {
+      throw new Error('Recurring occurrences need a date. Move or archive this occurrence instead.');
+    }
     if (existing && expectedUpdatedAt != null && existing.updated_at !== expectedUpdatedAt) {
       throw new Error('This task changed while you were editing. Reopen it to load the latest version.');
     }
@@ -165,7 +175,11 @@ export async function saveTodo(
       if (edited) throw new Error('This occurrence was already edited. Reload the calendar to use its latest version.');
     }
     const now = Math.max(Date.now(), (existing?.updated_at ?? 0) + 1);
-    const allDay = input.allDay ?? !input.startTime;
+    const scheduled = input.scheduled ?? Boolean(existing?.scheduled ?? 1);
+    if (!scheduled && (input.recurrenceRule === undefined ? existing?.recurrence_rule : input.recurrenceRule)) {
+      throw new Error('Recurring tasks need a scheduled date. Turn off repeat before removing the date.');
+    }
+    const allDay = !scheduled || (input.allDay ?? !input.startTime);
     const status = input.status ?? 'todo';
     const row: TodoRow = {
       id: taskId, title: input.title.trim(), notes: input.notes?.trim() || null,
@@ -182,7 +196,11 @@ export async function saveTodo(
       recurrence_rule: input.recurrenceRule === undefined ? existing?.recurrence_rule ?? null : input.recurrenceRule,
       series_id: existing?.series_id ?? occurrence?.seriesId ?? null,
       occurrence_date: existing?.occurrence_date ?? occurrence?.date ?? null,
+      scheduled: Number(scheduled), favorite: Number(input.favorite ?? Boolean(existing?.favorite)),
+      list_name: input.listName === undefined ? existing?.list_name ?? null : input.listName?.trim() || null,
+      project: input.project === undefined ? existing?.project ?? null : input.project?.trim() || null,
     };
+    if (row.list_name) await tx.runAsync('INSERT OR IGNORE INTO task_lists (name) VALUES (?)', row.list_name);
     await writeRow(tx, row);
     await journal(tx, id ? 'Edit task' : 'Create task', existing ? [existing] : [], [row]);
   });
@@ -190,6 +208,19 @@ export async function saveTodo(
 }
 
 export const addTodo = (db: SQLiteDatabase, input: TodoInput) => saveTodo(db, input);
+
+export async function listTaskLists(db: SQLiteDatabase) {
+  return (await db.getAllAsync<{ name: string }>('SELECT name FROM task_lists ORDER BY name COLLATE NOCASE'))
+    .map((row) => row.name);
+}
+
+export async function createTaskList(db: SQLiteDatabase, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length > 60) throw new Error('Enter a list name of 1 to 60 characters.');
+  const existing = await db.getFirstAsync<{ name: string }>('SELECT name FROM task_lists WHERE name = ?', trimmed);
+  if (existing) throw new Error('A list with this name already exists.');
+  await db.runAsync('INSERT INTO task_lists (name) VALUES (?)', trimmed);
+}
 
 export type TaskAction =
   | { type: 'status'; status: TodoStatus }
@@ -221,6 +252,7 @@ export async function changeTodos(db: SQLiteDatabase, ids: string[], action: Tas
       else if (action.type === 'archive') next.archived_at = action.archived ? now : null;
       else {
         next.due_date = action.dueDate;
+        next.scheduled = 1;
         next.sort_order = now;
       }
       return next;
@@ -308,6 +340,7 @@ export function todoInput(todo: Todo): TodoInput {
     notes: todo.notes, status: todo.status, subtasks: todo.subtasks, photos: todo.photos,
     links: todo.links, tags: todo.tags, color: todo.color, location: todo.location,
     estimatedMinutes: todo.estimated_minutes, actualMinutes: todo.actual_minutes, recurrenceRule: todo.recurrence_rule,
+    scheduled: Boolean(todo.scheduled), favorite: Boolean(todo.favorite), listName: todo.list_name, project: todo.project,
   };
 }
 
@@ -323,7 +356,7 @@ export async function listCalendarTodos(
   const overrides = new Map(rows.filter((row) => row.series_id).map((row) => [`${row.series_id}/${row.occurrence_date}`, row]));
   const result: CalendarTodo[] = [];
   for (const row of rows) {
-    if (row.deleted_at != null || row.archived_at != null) continue;
+    if (row.deleted_at != null || row.archived_at != null || !row.scheduled) continue;
     if (row.series_id) {
       const template = byId.get(row.series_id);
       if (!template || template.deleted_at != null || template.archived_at != null) continue;
@@ -358,17 +391,25 @@ export async function saveCalendarTodo(db: SQLiteDatabase, todo: CalendarTodo, p
     todo.virtual && todo.series_id && todo.occurrence_date ? { seriesId: todo.series_id, date: todo.occurrence_date } : undefined);
 }
 
+export async function setTaskFavorite(db: SQLiteDatabase, task: Todo, favorite: boolean) {
+  const separator = task.id.lastIndexOf('/');
+  if (separator >= 0) {
+    const date = task.id.slice(separator + 1);
+    const occurrence = (await listCalendarTodos(db, date, date)).find((item) => item.calendarKey === task.id);
+    if (!occurrence) throw new Error('This recurring occurrence is no longer available.');
+    if (occurrence.updated_at !== task.updated_at) throw new Error('This task changed. Reload before updating favorites.');
+    return saveCalendarTodo(db, occurrence, { favorite });
+  }
+  return saveTodo(db, { ...todoInput(task), favorite }, task.id, task.updated_at);
+}
+
 export async function listOverdueCalendarTodos(db: SQLiteDatabase, today: string, nowTime = toTimeKey(new Date())) {
   const oldest = await db.getFirstAsync<{ due_date: string | null }>(
     'SELECT MIN(due_date) AS due_date FROM tasks WHERE deleted_at IS NULL AND archived_at IS NULL',
   );
   if (!oldest?.due_date || oldest.due_date > today) return [];
   return (await listCalendarTodos(db, oldest.due_date, today, addDaysToKey(today, -30)))
-    .filter((task) => {
-      const deadline = task.due_time ?? task.end_time ?? task.start_time;
-      return task.status !== 'done' && (task.due_date < today ||
-        (!task.all_day && deadline !== null && deadline < nowTime));
-    });
+    .filter((task) => isTaskOverdue(task, today, nowTime));
 }
 
 async function setCalendarAwareDone(db: SQLiteDatabase, id: string, done: boolean) {

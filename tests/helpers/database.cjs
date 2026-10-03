@@ -58,8 +58,14 @@ function removeTaskV10Schema(native) {
 }
 
 function removeTaskV11Schema(native) {
+  removeTaskV12Schema(native);
   native.exec('DROP INDEX idx_task_occurrence');
   for (const name of ['recurrence_rule', 'series_id', 'occurrence_date']) native.exec(`ALTER TABLE tasks DROP COLUMN ${name}`);
 }
 
-module.exports = { loadSource, database, removeTaskV10Schema, removeTaskV11Schema };
+function removeTaskV12Schema(native) {
+  native.exec('DROP TABLE task_lists');
+  for (const name of ['scheduled', 'favorite', 'list_name', 'project']) native.exec(`ALTER TABLE tasks DROP COLUMN ${name}`);
+}
+
+module.exports = { loadSource, database, removeTaskV10Schema, removeTaskV11Schema, removeTaskV12Schema };

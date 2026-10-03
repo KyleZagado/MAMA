@@ -283,6 +283,7 @@ export function Todos({ session }: { session: Session }) {
         </Text>
         <ChipRow>
           <Chip label="New detailed task" selected={false} onPress={() => router.push('/task-form')} />
+          <Chip label="Lists / Group tasks" selected={false} onPress={() => router.push('/task-lists')} />
           <Chip label="Calendar" selected={false} onPress={() => router.push('/task-calendar')} />
           <Chip label="Manage tasks / Bulk / Drag" selected={false} onPress={() => router.push('/tasks')} />
           {undo && <Chip label={`Undo: ${undo}`} selected={false} onPress={() => void run(undoTaskAction)} />}

@@ -49,7 +49,7 @@ export function TaskManager({ session }: { session: Session }) {
   const days = useMemo(() => Array.from({ length: 7 }, (_, index) => addDaysToKey(date, index - 3)), [date]);
   const normalizedQuery = query.trim().toLowerCase();
   const visible = useMemo(() => tasks.filter((task) =>
-    (mode !== 'day' || task.due_date === date) &&
+    (mode !== 'day' || (task.scheduled && task.due_date === date)) &&
     (!normalizedQuery || `${task.title} ${task.notes ?? ''} ${task.tags.join(' ')} ${task.category ?? ''} ${task.location ?? ''}`.toLowerCase().includes(normalizedQuery))),
   [tasks, mode, date, normalizedQuery]);
 
@@ -59,7 +59,7 @@ export function TaskManager({ session }: { session: Session }) {
     setError(null);
     try {
       const db = await getDatabase(session.user.id);
-      const [rows, nextUndo] = await Promise.all([listTodos(db, mode === 'archived', false), getTaskUndo(db)]);
+      const [rows, nextUndo] = await Promise.all([listTodos(db, mode === 'archived', false, true), getTaskUndo(db)]);
       if (token !== request.current) return;
       setTasks(rows);
       setUndo(nextUndo?.label ?? null);
@@ -161,7 +161,7 @@ export function TaskManager({ session }: { session: Session }) {
     const target = findTaskDropTarget(targets.current, x, y);
     cancelDrag();
     if (!task || !target) return;
-    if (target.kind === 'date' && target.key !== task.due_date) {
+    if (target.kind === 'date' && (!task.scheduled || target.key !== task.due_date)) {
       void run((db) => changeTodos(db, [task.id], { type: 'reschedule', dueDate: target.key }));
     } else if (target.kind === 'task' && target.key !== task.id && mode === 'day' && !normalizedQuery) {
       const ids = taskDropOrder(visible.map((item) => item.id), task.id, target, y);
@@ -183,6 +183,7 @@ export function TaskManager({ session }: { session: Session }) {
           <ChipRow>
             <Chip label="New task" selected={false} disabled={!enabled} onPress={() => router.push({ pathname: '/task-form', params: { date } })} />
             <Chip label="Calendar" selected={false} disabled={!enabled} onPress={() => router.push('/task-calendar')} />
+            <Chip label="Lists / Group tasks" selected={false} disabled={!enabled} onPress={() => router.push('/task-lists')} />
             <Chip label={selecting ? 'Finish selection' : 'Bulk select'} selected={selecting} disabled={!enabled} onPress={() => { setSelecting(!selecting); setSelection([]); }} />
             {undo && <Chip label={`Undo: ${undo}`} selected={false} disabled={!enabled} onPress={() => void run(undoTaskAction)} />}
           </ChipRow>
@@ -242,7 +243,7 @@ export function TaskManager({ session }: { session: Session }) {
                 </Pressable>
                 <Pressable style={styles.flex} onPress={() => selecting ? toggleSelection(item.id) : router.push({ pathname: '/task-form', params: { id: item.id } })} accessibilityRole="button">
                   <Text style={[styles.heading, item.status === 'done' && styles.strike]}>{item.title}</Text>
-                  <Text style={styles.small}>{item.due_date} · {item.all_day ? 'All day' : `Due ${item.due_time ? formatTimeKey(item.due_time) : 'no time'}`}
+                  <Text style={styles.small}>{item.scheduled ? item.due_date : 'Unscheduled'} · {item.all_day ? 'All day' : `Due ${item.due_time ? formatTimeKey(item.due_time) : 'no time'}`}
                     {` · ${item.priority} · ${TASK_STATUSES.find((option) => option.id === item.status)?.label}`}</Text>
                 </Pressable>
                 {mode !== 'archived' && !selecting && !busy && !isLoading && <TaskDragHandle onStart={(x, y) => startDrag(item, x, y)} onMove={moveDrag} onEnd={endDrag} onCancel={cancelDrag} />}

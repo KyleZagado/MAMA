@@ -97,6 +97,30 @@ and retained when removed/archived/deleted so undo and duplicated tasks can
 still display them. Location and actual time spent are manual fields, not GPS
 tracking or an automatic timer.
 
+## Task lists and grouping
+
+Open **Lists / Group tasks** from To-Do or Manage Tasks for All tasks, Today,
+Tomorrow, Upcoming, Overdue, Completed, Unscheduled, Favorites, and My Lists.
+Today, Tomorrow, Upcoming, and Overdue show unfinished tasks; the other views
+can include completed tasks. Upcoming starts tomorrow. Overdue includes passed
+deadlines today and earlier scheduled dates, not unscheduled tasks.
+
+Group any view by Date, Priority (high first), Category, Project, Tag, Status,
+Time (morning/afternoon/evening or all-day/no time), or Location. Tasks with
+multiple tags appear under each tag; the view count counts distinct tasks.
+Search covers titles, notes, categories, projects, lists, tags, and locations.
+
+The task editor supports a favorite flag, one named list, a separate project,
+and a **Scheduled date** switch. Unscheduled tasks stay out of the home,
+widgets, and calendar until scheduled; they remain editable in All tasks,
+Unscheduled, and Manage Tasks. Recurring tasks/occurrences must retain a date.
+Create persistent empty lists from My Lists, or type a new list name in the
+editor. Favorites and completion can be toggled directly in the list browser,
+including individual recurring occurrences, and support task undo.
+Recurring list entries use the same 30-day-back/one-year-ahead window as home;
+use Calendar for recurring dates outside that window. One-off tasks are not
+date-window limited. Existing task data and undo history survive the upgrade.
+
 ## To-Do calendar
 
 Open **Calendar** from the To-Do home or task manager. Switch between Month,
@@ -158,7 +182,7 @@ environment used by the build. Do not commit `.env` or credentials.
 npm run lint
 npx tsc --noEmit
 npx expo-doctor
-node --test tests/finance.test.cjs tests/tasks.test.cjs tests/calendar.test.cjs
+node --test tests/finance.test.cjs tests/tasks.test.cjs tests/calendar.test.cjs tests/task-organization.test.cjs
 ```
 
 The finance regression tests use Node's built-in SQLite module (Node 22.13+
