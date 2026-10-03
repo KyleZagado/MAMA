@@ -26,6 +26,12 @@ session. The timer shows goal progress, a timeline, current phase, daily status,
 and the next eating/fasting window based on the selected protocol. Eating-window
 and phase estimates are informational and do not provide medical guidance.
 
+## Home page sequence
+
+Use **Profile → Home page sequence** to move any main page earlier or later,
+send it directly to the first or last position, or restore the default order.
+The setting is saved per signed-in user on the device.
+
 ## Quick expense entry
 
 Use **Add Expense** on the finance dashboard. Enter an amount, choose a category

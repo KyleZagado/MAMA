@@ -9,10 +9,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 
+import { HOME_PAGES, type HomePageId } from '../constants/home-pages';
 import { lightColors as colors } from '../constants/theme';
+import { loadHomePageOrder } from '../lib/home-page-preference';
 import { refreshWidgets } from '../widgets/refresh';
 import { Consumption } from './consumption';
 import { Dashboard } from './dashboard';
@@ -20,13 +23,37 @@ import { Fasting } from './fasting';
 import { Fitness } from './fitness';
 import { Todos } from './todos';
 
-const PAGES = ['Wallets', 'To-do list', 'Food and water', 'Fitness', 'Fasting Tracker'];
-
 // Swipe left through the main feature pages; swipe right to go back.
 export function HomePager({ session }: { session: Session }) {
   const scrollRef = useRef<ScrollView>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [page, setPage] = useState(0);
+  const [pageOrder, setPageOrder] = useState<HomePageId[]>(HOME_PAGES.map((item) => item.id));
+  const [orderError, setOrderError] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      loadHomePageOrder(session.user.id)
+        .then((order) => {
+          if (!mounted) return;
+          setPageOrder(order);
+          setPage(0);
+          scrollRef.current?.scrollTo({ x: 0, animated: false });
+          setOrderError(null);
+        })
+        .catch((error: unknown) => {
+          if (mounted) {
+            setOrderError(
+              error instanceof Error ? error.message : 'Could not load your home page order.',
+            );
+          }
+        });
+      return () => {
+        mounted = false;
+      };
+    }, [session.user.id]),
+  );
 
   // Keep the home screen widgets current: refresh on return to this screen and when leaving the app.
   useFocusEffect(
@@ -56,6 +83,14 @@ export function HomePager({ session }: { session: Session }) {
     setPage(index);
   }
 
+  const pages = new Map<HomePageId, React.ReactNode>([
+    ['finance', <Dashboard key="finance" session={session} />],
+    ['todos', <Todos key="todos" session={session} />],
+    ['consumption', <Consumption key="consumption" session={session} />],
+    ['fitness', <Fitness key="fitness" session={session} />],
+    ['fasting', <Fasting key="fasting" session={session} />],
+  ]);
+
   return (
     <View style={styles.container} onLayout={onLayout}>
       {size.width > 0 && (
@@ -68,35 +103,29 @@ export function HomePager({ session }: { session: Session }) {
           keyboardShouldPersistTaps="handled"
           onMomentumScrollEnd={onScrollEnd}
         >
-          <View style={size}>
-            <Dashboard session={session} />
-          </View>
-          <View style={size}>
-            <Todos session={session} />
-          </View>
-          <View style={size}>
-            <Consumption session={session} />
-          </View>
-          <View style={size}>
-            <Fitness session={session} />
-          </View>
-          <View style={size}>
-            <Fasting session={session} />
-          </View>
+          {pageOrder.map((id) => (
+            <View key={id} style={size}>
+              {pages.get(id)}
+            </View>
+          ))}
         </ScrollView>
       )}
+      {orderError && <Text style={styles.error}>{orderError}</Text>}
       <View style={styles.dots} pointerEvents="box-none">
-        {PAGES.map((label, index) => (
-          <Pressable
-            key={label}
-            onPress={() => goTo(index)}
-            hitSlop={8}
-            style={[styles.dot, page === index && styles.dotActive]}
-            accessibilityRole="button"
-            accessibilityLabel={`Show ${label}`}
-            accessibilityState={{ selected: page === index }}
-          />
-        ))}
+        {pageOrder.map((id, index) => {
+          const label = HOME_PAGES.find((item) => item.id === id)?.label ?? id;
+          return (
+            <Pressable
+              key={id}
+              onPress={() => goTo(index)}
+              hitSlop={8}
+              style={[styles.dot, page === index && styles.dotActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`Show ${label}`}
+              accessibilityState={{ selected: page === index }}
+            />
+          );
+        })}
       </View>
     </View>
   );
@@ -115,4 +144,13 @@ const styles = StyleSheet.create({
   },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
   dotActive: { width: 22, backgroundColor: colors.primary },
+  error: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 42,
+    color: colors.danger,
+    fontSize: 12,
+    textAlign: 'center',
+  },
 });

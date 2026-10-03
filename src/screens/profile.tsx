@@ -1,7 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -18,7 +19,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CurrencyPicker } from '../components/currency-picker';
 import { DEFAULT_CURRENCY, isCurrencyCode } from '../constants/currencies';
+import { DEFAULT_HOME_PAGE_ORDER, HOME_PAGES, moveHomePage, type HomePageId } from '../constants/home-pages';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
+import { loadHomePageOrder, saveHomePageOrder } from '../lib/home-page-preference';
 import { supabase } from '../lib/supabase';
 
 type ProfileProps = {
@@ -144,8 +147,36 @@ export function Profile({ session }: ProfileProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [homePageOrder, setHomePageOrder] = useState<HomePageId[]>([...DEFAULT_HOME_PAGE_ORDER]);
+  const [isLoadingHomePageOrder, setIsLoadingHomePageOrder] = useState(true);
+  const [isSavingHomePageOrder, setIsSavingHomePageOrder] = useState(false);
+  const [homePageOrderError, setHomePageOrderError] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(avatarUrl(session));
   const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    loadHomePageOrder(session.user.id)
+      .then((order) => {
+        if (mounted) {
+          setHomePageOrder(order);
+          setHomePageOrderError(null);
+        }
+      })
+      .catch((error: unknown) => {
+        if (mounted) {
+          setHomePageOrderError(
+            error instanceof Error ? error.message : 'Could not load the home page order.',
+          );
+        }
+      })
+      .finally(() => {
+        if (mounted) setIsLoadingHomePageOrder(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [session.user.id]);
 
   const trimmed: Form = {
     name: form.name.trim(),
@@ -173,6 +204,38 @@ export function Profile({ session }: ProfileProps) {
   function goBack() {
     if (router.canGoBack()) router.back();
     else router.replace('/dashboard');
+  }
+
+  async function reorderHomePage(pageId: HomePageId, targetIndex: number) {
+    if (isSavingHomePageOrder || isLoadingHomePageOrder) return;
+    const next = moveHomePage(homePageOrder, pageId, targetIndex);
+    if (next === homePageOrder) return;
+    setIsSavingHomePageOrder(true);
+    setHomePageOrderError(null);
+    try {
+      setHomePageOrder(await saveHomePageOrder(session.user.id, next));
+    } catch (error: unknown) {
+      setHomePageOrderError(
+        error instanceof Error ? error.message : 'Could not save your home page order.',
+      );
+    } finally {
+      setIsSavingHomePageOrder(false);
+    }
+  }
+
+  async function resetHomePageOrder() {
+    if (isSavingHomePageOrder || isLoadingHomePageOrder) return;
+    setIsSavingHomePageOrder(true);
+    setHomePageOrderError(null);
+    try {
+      setHomePageOrder(await saveHomePageOrder(session.user.id, DEFAULT_HOME_PAGE_ORDER));
+    } catch (error: unknown) {
+      setHomePageOrderError(
+        error instanceof Error ? error.message : 'Could not reset your home page order.',
+      );
+    } finally {
+      setIsSavingHomePageOrder(false);
+    }
   }
 
   async function handleSave() {
@@ -306,6 +369,108 @@ export function Profile({ session }: ProfileProps) {
             </Pressable>
             <Text style={styles.name}>{displayName}</Text>
             {email ? <Text style={styles.email}>{email}</Text> : null}
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.homePagesHeading}>
+              <View style={styles.flex}>
+                <Text style={styles.sectionTitle}>Home page sequence</Text>
+                <Text style={styles.hint}>
+                  Choose the order of pages when you swipe through Home.
+                </Text>
+              </View>
+              <Pressable
+                onPress={resetHomePageOrder}
+                disabled={isSavingHomePageOrder || isLoadingHomePageOrder}
+                style={({ pressed }) => [
+                  styles.resetOrderButton,
+                  (isSavingHomePageOrder || isLoadingHomePageOrder) && styles.disabled,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Reset home page order"
+              >
+                <Text style={styles.resetOrderText}>Reset</Text>
+              </Pressable>
+            </View>
+            {homePageOrder.map((pageId, index) => {
+              const page = HOME_PAGES.find((item) => item.id === pageId);
+              if (!page) return null;
+              const disabled = isLoadingHomePageOrder || isSavingHomePageOrder;
+              return (
+                <View key={page.id} style={styles.homePageRow}>
+                  <View style={styles.homePagePosition}>
+                    <Text style={styles.homePagePositionText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.homePageName}>{page.label}</Text>
+                  <View style={styles.reorderActions}>
+                    <Pressable
+                      onPress={() => reorderHomePage(page.id, 0)}
+                      disabled={disabled || index <= 0}
+                      style={({ pressed }) => [
+                        styles.reorderButton,
+                        (disabled || index <= 0) && styles.disabled,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Move ${page.label} to first`}
+                    >
+                      <Ionicons name="play-skip-back" size={16} color={colors.primary} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => reorderHomePage(page.id, index - 1)}
+                      disabled={disabled || index <= 0}
+                      style={({ pressed }) => [
+                        styles.reorderButton,
+                        (disabled || index <= 0) && styles.disabled,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Move ${page.label} earlier`}
+                    >
+                      <Ionicons name="chevron-up" size={20} color={colors.primary} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => reorderHomePage(page.id, index + 1)}
+                      disabled={disabled || index < 0 || index >= HOME_PAGES.length - 1}
+                      style={({ pressed }) => [
+                        styles.reorderButton,
+                        (disabled || index < 0 || index >= HOME_PAGES.length - 1) && styles.disabled,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Move ${page.label} later`}
+                    >
+                      <Ionicons name="chevron-down" size={20} color={colors.primary} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => reorderHomePage(page.id, HOME_PAGES.length - 1)}
+                      disabled={disabled || index < 0 || index >= HOME_PAGES.length - 1}
+                      style={({ pressed }) => [
+                        styles.reorderButton,
+                        (disabled || index < 0 || index >= HOME_PAGES.length - 1) && styles.disabled,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Move ${page.label} to last`}
+                    >
+                      <Ionicons name="play-skip-forward" size={16} color={colors.primary} />
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
+            {isLoadingHomePageOrder && (
+              <Text style={styles.hint} accessibilityLiveRegion="polite">Loading home page order…</Text>
+            )}
+            {isSavingHomePageOrder && (
+              <Text style={styles.hint} accessibilityLiveRegion="polite">Saving sequence…</Text>
+            )}
+            {homePageOrderError && (
+              <Text style={[styles.message, styles.error]} accessibilityLiveRegion="polite">
+                {homePageOrderError}
+              </Text>
+            )}
           </View>
 
           <View style={styles.card}>
@@ -554,6 +719,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  homePagesHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  homePageRow: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  homePagePosition: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: colors.primarySoft,
+  },
+  homePagePositionText: { color: colors.primary, fontSize: 13, fontWeight: '800' },
+  homePageName: { flex: 1, color: colors.text, fontSize: 13, fontWeight: '600' },
+  reorderActions: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  reorderButton: { width: 32, height: 36, alignItems: 'center', justifyContent: 'center' },
+  resetOrderButton: {
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+  },
+  resetOrderText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   label: {
     color: colors.textSubtle,
     fontSize: 11,
