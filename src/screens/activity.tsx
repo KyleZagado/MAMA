@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import React, { useState } from 'react';
@@ -152,7 +153,7 @@ export function Activity({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   pressed: { opacity: 0.75 },
   disabled: { opacity: 0.45 },
@@ -181,4 +182,4 @@ const styles = StyleSheet.create({
   controlSecondaryText: { color: colors.heroBackground, fontSize: 15, fontWeight: '700' },
   controlPrimary: { backgroundColor: colors.primary },
   controlPrimaryText: { color: colors.onPrimary, fontSize: 15, fontWeight: '700' },
-});
+}));

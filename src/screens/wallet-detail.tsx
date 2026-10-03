@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
@@ -164,11 +165,11 @@ function Amount({ label, amount, currency }: { label: string; amount: number; cu
   return <View style={styles.row}><Text style={styles.hint}>{label}</Text><Text style={styles.heading}>{formatMoney(amount, { currency })}</Text></View>;
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   stack: { gap: spacing.lg },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
   balance: { color: colors.primary, fontSize: 32, fontWeight: '800' },
   heading: { color: colors.text, fontSize: 16, fontWeight: '700' },
   hint: { color: colors.textMuted, fontSize: 14, lineHeight: 21 },
-});
+}));

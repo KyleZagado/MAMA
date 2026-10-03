@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import { randomUUID } from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
@@ -368,7 +369,7 @@ function TaskPhoto({ uri, onRemove }: { uri: string; onRemove: () => void }) {
   </View>;
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background }, flex: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'space-between' },
   hint: { color: colors.textMuted, fontSize: 14, lineHeight: 21 },
@@ -376,4 +377,4 @@ const styles = StyleSheet.create({
   check: { minWidth: 40, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   photo: { width: '100%', height: 230 }, swatch: { height: 8, borderRadius: 4 },
   link: { color: colors.primary, fontSize: 14, paddingVertical: spacing.sm },
-});
+}));

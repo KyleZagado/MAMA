@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -821,7 +822,7 @@ function formatClock(date: Date) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   pressed: { opacity: 0.75 },
   dashboardCard: {
@@ -1015,4 +1016,4 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     backgroundColor: colors.surface,
   },
-});
+}));

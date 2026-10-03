@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import React, { useEffect, useState } from 'react';
 import {
@@ -196,7 +197,7 @@ export function WalletForm({ session, walletId }: { session: Session; walletId?:
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   flex: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: colors.background },
   hint: { color: colors.textMuted, fontSize: 14 },
@@ -210,4 +211,4 @@ const styles = StyleSheet.create({
   },
   deleteText: { color: colors.danger, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.75 },
-});
+}));

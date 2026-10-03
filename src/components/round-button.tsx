@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
@@ -34,7 +35,7 @@ export function RoundButton({ icon, label, onPress, disabled, size = 44, color =
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -44,4 +45,4 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: 0.4 },
   pressed: { opacity: 0.7 },
-});
+}));

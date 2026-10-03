@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import React, { useState } from 'react';
@@ -236,7 +237,7 @@ export function Water({ session, dateKey }: { session: Session; dateKey: string 
               accessibilityLabel="Delete water entry"
             >
               <View style={styles.dropIcon}>
-                <Ionicons name="water" size={14} color="#3B82F6" />
+                <Ionicons name="water" size={14} color={colors.primary} />
               </View>
               <Text style={styles.logText} numberOfLines={1}>
                 <Text style={styles.logTime}>
@@ -259,7 +260,7 @@ export function Water({ session, dateKey }: { session: Session; dateKey: string 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
@@ -334,7 +335,7 @@ const styles = StyleSheet.create({
   barArea: { height: BAR_AREA, justifyContent: 'flex-end' },
   bar: { width: 12, borderRadius: 6, backgroundColor: colors.heroBackground },
   barSelected: { backgroundColor: colors.accent },
-  barEmpty: { backgroundColor: '#E3E8EE' },
+  barEmpty: { backgroundColor: colors.surfaceAlt },
   barLabel: { color: colors.textSubtle, fontSize: 11 },
   goalRow: {
     flexDirection: 'row',
@@ -354,7 +355,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#E8F0FE',
+    backgroundColor: colors.primarySoft,
   },
   logText: { flex: 1, color: colors.textMuted, fontSize: 14 },
   logTime: { color: colors.text, fontWeight: '800' },
@@ -362,4 +363,4 @@ const styles = StyleSheet.create({
   empty: { color: colors.textMuted, fontSize: 14 },
   hint: { color: colors.textSubtle, fontSize: 12, textAlign: 'center', marginTop: spacing.md },
   error: { color: colors.danger, fontSize: 13, marginTop: spacing.lg },
-});
+}));

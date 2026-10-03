@@ -1,8 +1,9 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { lightColors as colors, spacing } from '../constants/theme';
+import { spacing } from '../constants/theme';
 
 export function goBack() {
   if (router.canGoBack()) router.back();
@@ -27,7 +28,7 @@ export function ScreenHeader({ title }: { title: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -39,4 +40,4 @@ const styles = StyleSheet.create({
   spacer: { minWidth: 64 },
   title: { color: colors.text, fontSize: 18, fontWeight: '700' },
   pressed: { opacity: 0.75 },
-});
+}));

@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import { useFocusEffect } from 'expo-router';
@@ -322,7 +323,7 @@ export function Overview({ session, isVisible = true }: { session: Session; isVi
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
@@ -386,4 +387,4 @@ const styles = StyleSheet.create({
   errorText: { color: colors.danger, fontSize: 13 },
   retryButton: { alignSelf: 'flex-start', paddingVertical: spacing.sm, marginTop: spacing.xs },
   retryText: { color: colors.danger, fontWeight: '700', fontSize: 13 },
-});
+}));

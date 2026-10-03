@@ -2,15 +2,18 @@ import { Redirect } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { lightColors as colors } from '../constants/theme';
 import { useAuth } from '../providers/auth-provider';
+import { createThemedStyleSheet, useTheme } from '../providers/theme-provider';
 
 export default function IndexRoute() {
   const { session, isLoading } = useAuth();
+  useTheme();
 
   if (isLoading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color="#16745A" size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
@@ -18,11 +21,11 @@ export default function IndexRoute() {
   return <Redirect href={session ? '/dashboard' : '/sign-in'} />;
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   loading: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F6F8F7',
+    backgroundColor: colors.background,
   },
-});
+}));

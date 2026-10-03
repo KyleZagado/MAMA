@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
@@ -380,7 +381,7 @@ function IncomeScheduleForm({ session, wallets, onClose, onSaved }: {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   stack: { gap: spacing.lg },
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
@@ -389,4 +390,4 @@ const styles = StyleSheet.create({
   hint: { color: colors.textMuted, fontSize: 14, lineHeight: 21 },
   dayInput: { flex: 1 },
   textButton: { minHeight: 40, justifyContent: 'center', alignSelf: 'flex-start', borderRadius: radius.sm },
-});
+}));

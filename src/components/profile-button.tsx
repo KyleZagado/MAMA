@@ -1,9 +1,8 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text } from 'react-native';
-
-import { lightColors as colors } from '../constants/theme';
 
 function initial(session: Session) {
   const name = session.user.user_metadata?.display_name;
@@ -30,7 +29,7 @@ export function ProfileButton({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   avatar: {
     width: 44,
     height: 44,
@@ -45,4 +44,4 @@ const styles = StyleSheet.create({
   image: { width: '100%', height: '100%' },
   initial: { color: colors.primary, fontSize: 17, fontWeight: '700' },
   pressed: { opacity: 0.75 },
-});
+}));

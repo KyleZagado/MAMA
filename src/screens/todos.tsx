@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
@@ -520,7 +521,7 @@ export function Todos({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
@@ -650,7 +651,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  taskDone: { backgroundColor: '#F4F6F3' },
+  taskDone: { backgroundColor: colors.surfaceAlt },
   check: {
     width: 30,
     height: 30,
@@ -686,4 +687,4 @@ const styles = StyleSheet.create({
   rhythmTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '600' },
   rhythmNote: { color: '#93A39B', fontSize: 13 },
   error: { color: colors.danger, fontSize: 13, marginTop: spacing.lg },
-});
+}));

@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -159,7 +160,7 @@ export function TaskLists({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: { gap: spacing.md, marginBottom: spacing.md },
   section: { fontSize: 18, fontWeight: '700', color: colors.text, marginVertical: spacing.md },
@@ -169,4 +170,4 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '600', color: colors.text },
   hint: { fontSize: 13, color: colors.textSubtle },
   done: { textDecorationLine: 'line-through', opacity: 0.6 },
-});
+}));

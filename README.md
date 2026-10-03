@@ -34,6 +34,12 @@ The default and reset order is Overview Tracker, To-do list, Wallets & finance,
 Food and water, Fitness, then Fasting Tracker. The setting is saved per
 signed-in user on the device.
 
+## Dark mode
+
+Use the **Dark mode** switch in Profile to change the appearance across the app.
+The preference is saved on the device and applies to authenticated pages,
+sign-in screens, and the status bar.
+
 ## Overview tracker
 
 Swipe to **Overview Tracker** for a monthly calendar combining activity from

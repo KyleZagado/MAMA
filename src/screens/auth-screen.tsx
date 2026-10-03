@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase, supabaseConfigError } from '../lib/supabase';
 import { useAuth } from '../providers/auth-provider';
+import { createThemedStyleSheet, useThemeColors } from '../providers/theme-provider';
 
 type AuthScreenProps = {
   mode: 'sign-in' | 'sign-up';
@@ -25,6 +26,7 @@ function messageFromError(error: unknown) {
 }
 
 export function AuthScreen({ mode }: AuthScreenProps) {
+  const colors = useThemeColors();
   const isSignUp = mode === 'sign-up';
   const { initializationError } = useAuth();
   const [name, setName] = useState('');
@@ -135,7 +137,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                   value={name}
                   onChangeText={setName}
                   placeholder="Your name"
-                  placeholderTextColor="#929D98"
+                  placeholderTextColor={colors.textSubtle}
                   autoCapitalize="words"
                   autoComplete="name"
                   returnKeyType="next"
@@ -151,7 +153,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="you@example.com"
-                placeholderTextColor="#929D98"
+                placeholderTextColor={colors.textSubtle}
                 autoCapitalize="none"
                 autoComplete="email"
                 keyboardType="email-address"
@@ -169,7 +171,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                   value={password}
                   onChangeText={setPassword}
                   placeholder={isSignUp ? 'At least 8 characters' : 'Your password'}
-                  placeholderTextColor="#929D98"
+                  placeholderTextColor={colors.textSubtle}
                   autoCapitalize="none"
                   autoComplete={isSignUp ? 'new-password' : 'current-password'}
                   textContentType={isSignUp ? 'newPassword' : 'password'}
@@ -198,7 +200,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     placeholder="Re-enter your password"
-                    placeholderTextColor="#929D98"
+                    placeholderTextColor={colors.textSubtle}
                     autoCapitalize="none"
                     autoComplete="new-password"
                     textContentType="newPassword"
@@ -249,7 +251,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
               accessibilityRole="button"
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
                 <Text style={styles.primaryButtonText}>
                   {isSignUp ? 'Create my account' : 'Sign in'}
@@ -276,10 +278,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F6F8F7',
+    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -303,18 +305,18 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: '#16745A',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   brandMarkText: {
-    color: '#FFFFFF',
+    color: colors.onPrimary,
     fontSize: 23,
     lineHeight: 28,
     fontWeight: '700',
   },
   brandName: {
-    color: '#123D32',
+    color: colors.text,
     fontSize: 20,
     letterSpacing: -0.7,
     fontWeight: '700',
@@ -323,14 +325,14 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   eyebrow: {
-    color: '#16745A',
+    color: colors.primary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.4,
     marginBottom: 12,
   },
   title: {
-    color: '#17342C',
+    color: colors.text,
     fontSize: 34,
     lineHeight: 40,
     letterSpacing: -1.2,
@@ -338,7 +340,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   subtitle: {
-    color: '#718079',
+    color: colors.textMuted,
     fontSize: 15,
     lineHeight: 23,
   },
@@ -349,7 +351,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    color: '#29473D',
+    color: colors.text,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -357,10 +359,10 @@ const styles = StyleSheet.create({
     minHeight: 54,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E0E8E3',
+    borderColor: colors.border,
     paddingHorizontal: 16,
-    color: '#17342C',
-    backgroundColor: '#FFFFFF',
+    color: colors.text,
+    backgroundColor: colors.surface,
     fontSize: 15,
   },
   passwordField: {
@@ -369,23 +371,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E0E8E3',
+    borderColor: colors.border,
     paddingLeft: 16,
     paddingRight: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   passwordInput: {
     flex: 1,
     paddingVertical: 14,
-    color: '#17342C',
+    color: colors.text,
     fontSize: 15,
   },
   mismatchText: {
-    color: '#A23F36',
+    color: colors.danger,
     fontSize: 12,
   },
   showPassword: {
-    color: '#16745A',
+    color: colors.primary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,
@@ -393,36 +395,36 @@ const styles = StyleSheet.create({
   configNotice: {
     padding: 13,
     borderRadius: 12,
-    backgroundColor: '#FFF5E8',
+    backgroundColor: colors.warningSoft,
     borderWidth: 1,
-    borderColor: '#F1D8B7',
+    borderColor: colors.border,
   },
   configNoticeText: {
-    color: '#815626',
+    color: colors.warning,
     fontSize: 13,
     lineHeight: 19,
   },
   errorNotice: {
     padding: 13,
     borderRadius: 12,
-    backgroundColor: '#FFF0EF',
+    backgroundColor: colors.dangerSoft,
     borderWidth: 1,
-    borderColor: '#F2CECA',
+    borderColor: colors.border,
   },
   errorText: {
-    color: '#A23F36',
+    color: colors.danger,
     fontSize: 13,
     lineHeight: 19,
   },
   successNotice: {
     padding: 13,
     borderRadius: 12,
-    backgroundColor: '#EAF5EF',
+    backgroundColor: colors.successSoft,
     borderWidth: 1,
-    borderColor: '#CEE4D7',
+    borderColor: colors.border,
   },
   successText: {
-    color: '#276448',
+    color: colors.success,
     fontSize: 13,
     lineHeight: 19,
   },
@@ -432,10 +434,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 4,
     borderRadius: 16,
-    backgroundColor: '#16745A',
+    backgroundColor: colors.primary,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: colors.onPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -453,20 +455,20 @@ const styles = StyleSheet.create({
     marginTop: 26,
   },
   switchText: {
-    color: '#718079',
+    color: colors.textMuted,
     fontSize: 14,
   },
   switchLink: {
-    color: '#16745A',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '700',
   },
   footerText: {
-    color: '#94A19A',
+    color: colors.textSubtle,
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
     marginTop: 'auto',
     paddingTop: 38,
   },
-});
+}));

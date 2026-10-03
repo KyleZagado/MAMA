@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -95,7 +96,7 @@ export function CurrencyPicker({ value, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   pressed: { opacity: 0.75 },
   trigger: {
     minHeight: 48,
@@ -144,4 +145,4 @@ const styles = StyleSheet.create({
   code: { width: 48, color: colors.text, fontSize: 16, fontWeight: '700' },
   name: { flex: 1, color: colors.textMuted, fontSize: 15 },
   empty: { color: colors.textMuted, fontSize: 14, padding: 22 },
-});
+}));

@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +8,7 @@ import { formStyles } from '../components/form';
 import { RouteMap } from '../components/route-map';
 import { goBack, ScreenHeader } from '../components/screen-header';
 import { Stat, StatGrid } from '../components/stat';
-import { lightColors as colors, radius, spacing } from '../constants/theme';
+import { radius, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
 import { deleteActivity, getActivity, parseRoute, type ActivityRow } from '../database/activities';
 import { activityInfo, formatDuration, formatKm, formatPace } from '../lib/activity';
@@ -98,7 +99,7 @@ export function ActivityDetail({ session, activityId }: { session: Session; acti
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   pressed: { opacity: 0.75 },
   when: { color: colors.textMuted, fontSize: 14 },
@@ -111,4 +112,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   deleteText: { color: colors.danger, fontSize: 15, fontWeight: '700' },
-});
+}));

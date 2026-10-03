@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import * as ImagePicker from 'expo-image-picker';
@@ -301,7 +302,7 @@ export function MealForm({ session, mealId, dateKey }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   flex: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: colors.background },
   pressed: { opacity: 0.75 },
@@ -329,7 +330,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 22,
-    backgroundColor: '#E8F0FE',
+    backgroundColor: colors.primarySoft,
   },
   photoTitle: { color: colors.text, fontSize: 14, fontWeight: '700' },
   photoHint: { color: colors.textSubtle, fontSize: 11 },
@@ -354,4 +355,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   saveText: { color: colors.heroBackground, fontSize: 15, fontWeight: '800' },
-});
+}));

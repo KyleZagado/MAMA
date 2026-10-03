@@ -11,6 +11,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -23,6 +24,7 @@ import { DEFAULT_HOME_PAGE_ORDER, HOME_PAGES, moveHomePage, type HomePageId } fr
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import { loadHomePageOrder, saveHomePageOrder } from '../lib/home-page-preference';
 import { supabase } from '../lib/supabase';
+import { createThemedStyleSheet, useTheme } from '../providers/theme-provider';
 
 type ProfileProps = {
   session: Session;
@@ -137,6 +139,7 @@ function errorText(error: unknown) {
 }
 
 export function Profile({ session }: ProfileProps) {
+  const { mode, setMode, isLoading: isLoadingTheme, error: themeLoadError } = useTheme();
   const email = session.user.email ?? '';
   const saved = loadForm(session);
   const currentName = saved.name;
@@ -151,6 +154,8 @@ export function Profile({ session }: ProfileProps) {
   const [isLoadingHomePageOrder, setIsLoadingHomePageOrder] = useState(true);
   const [isSavingHomePageOrder, setIsSavingHomePageOrder] = useState(false);
   const [homePageOrderError, setHomePageOrderError] = useState<string | null>(null);
+  const [isSavingTheme, setIsSavingTheme] = useState(false);
+  const [themeError, setThemeError] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(avatarUrl(session));
   const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
@@ -235,6 +240,18 @@ export function Profile({ session }: ProfileProps) {
       );
     } finally {
       setIsSavingHomePageOrder(false);
+    }
+  }
+
+  async function changeTheme(enabled: boolean) {
+    setIsSavingTheme(true);
+    setThemeError(null);
+    try {
+      await setMode(enabled ? 'dark' : 'light');
+    } catch (error: unknown) {
+      setThemeError(errorText(error));
+    } finally {
+      setIsSavingTheme(false);
     }
   }
 
@@ -369,6 +386,28 @@ export function Profile({ session }: ProfileProps) {
             </Pressable>
             <Text style={styles.name}>{displayName}</Text>
             {email ? <Text style={styles.email}>{email}</Text> : null}
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.appearanceRow}>
+              <View style={styles.appearanceCopy}>
+                <Text style={styles.sectionTitle}>Dark mode</Text>
+                <Text style={styles.hint}>Use a darker appearance across all pages.</Text>
+              </View>
+              <Switch
+                value={mode === 'dark'}
+                onValueChange={changeTheme}
+                disabled={isLoadingTheme || isSavingTheme}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.surface}
+                accessibilityLabel="Dark mode"
+              />
+            </View>
+            {(themeError || themeLoadError) && (
+              <Text style={[styles.message, styles.error]} accessibilityLiveRegion="polite">
+                {themeError ?? themeLoadError}
+              </Text>
+            )}
           </View>
 
           <View style={styles.card}>
@@ -662,7 +701,7 @@ export function Profile({ session }: ProfileProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   flex: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: {
@@ -721,6 +760,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
   homePagesHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  appearanceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  appearanceCopy: { flex: 1 },
   homePageRow: {
     minHeight: 54,
     flexDirection: 'row',
@@ -817,4 +858,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerSoft,
   },
   signOutText: { color: colors.danger, fontSize: 15, fontWeight: '700' },
-});
+}));

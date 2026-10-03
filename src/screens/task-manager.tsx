@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
@@ -285,7 +286,7 @@ export function TaskManager({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background }, flex: { flex: 1 },
   top: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
@@ -303,4 +304,4 @@ const styles = StyleSheet.create({
   dragText: { color: colors.onPrimary, fontWeight: '700' },
   backdrop: { flex: 1, backgroundColor: '#00000066', justifyContent: 'center', padding: spacing.lg },
   dialog: { backgroundColor: colors.background, padding: spacing.lg, borderRadius: radius.lg, gap: spacing.lg },
-});
+}));

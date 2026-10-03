@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
@@ -349,7 +350,7 @@ export function Fitness({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: {
@@ -483,4 +484,4 @@ const styles = StyleSheet.create({
   chipTextSelected: { color: colors.onPrimary },
   exerciseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 14 },
   error: { color: colors.danger, fontSize: 13, marginTop: spacing.lg },
-});
+}));

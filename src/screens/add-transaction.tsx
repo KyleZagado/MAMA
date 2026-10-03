@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import * as ImagePicker from 'expo-image-picker';
@@ -344,7 +345,7 @@ export function AddTransaction({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   flex: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: colors.background },
   hint: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
@@ -364,4 +365,4 @@ const styles = StyleSheet.create({
   saveBar: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: 22, paddingVertical: spacing.md,
     gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
   summary: { color: colors.textMuted, fontSize: 12 },
-});
+}));

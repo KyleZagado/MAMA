@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text } from 'react-native';
@@ -42,7 +43,7 @@ export function PickerField({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   pickerButton: {
     minHeight: 36,
     justifyContent: 'center',
@@ -51,4 +52,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
   },
   pickerText: { color: colors.text, fontSize: 14, fontWeight: '600' },
-});
+}));

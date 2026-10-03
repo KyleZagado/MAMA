@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import { useFocusEffect } from 'expo-router';
@@ -800,7 +801,7 @@ export function Fasting({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
@@ -939,4 +940,4 @@ const styles = StyleSheet.create({
   modalSave: { backgroundColor: colors.primary },
   modalCancelText: { color: colors.text, fontSize: 14, fontWeight: '700' },
   modalSaveText: { color: colors.onPrimary, fontSize: 14, fontWeight: '700' },
-});
+}));

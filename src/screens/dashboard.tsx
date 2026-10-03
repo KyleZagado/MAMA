@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
@@ -522,7 +523,7 @@ function formatBillDate(key: string) {
   return fromDateKey(key).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
@@ -707,4 +708,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   formHint: { color: colors.textMuted, fontSize: 12 },
-});
+}));

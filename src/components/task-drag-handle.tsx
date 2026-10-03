@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { PanResponder, StyleSheet, View } from 'react-native';
@@ -31,4 +32,4 @@ export class TaskDragHandle extends React.Component<DragProps> {
   }
 }
 
-const styles = StyleSheet.create({ handle: { width: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' } });
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({ handle: { width: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' } }));

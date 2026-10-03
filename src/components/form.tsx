@@ -1,7 +1,8 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { lightColors as colors, radius, spacing } from '../constants/theme';
+import { radius, spacing } from '../constants/theme';
 
 export function FieldLabel({ children }: { children: string }) {
   return <Text style={styles.label}>{children}</Text>;
@@ -47,7 +48,7 @@ export function PrimaryButton(props: {
   );
 }
 
-export const formStyles = StyleSheet.create({
+export const formStyles = createThemedStyleSheet((colors) => StyleSheet.create({
   content: {
     width: '100%',
     maxWidth: 560,
@@ -77,9 +78,9 @@ export const formStyles = StyleSheet.create({
   },
   error: { color: colors.danger, fontSize: 13 },
   gap: { marginTop: spacing.md },
-});
+}));
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   label: {
     color: colors.textSubtle,
     fontSize: 11,
@@ -110,4 +111,4 @@ const styles = StyleSheet.create({
   primaryText: { color: colors.onPrimary, fontSize: 15, fontWeight: '700' },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.75 },
-});
+}));

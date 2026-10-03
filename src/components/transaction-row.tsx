@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -66,7 +67,7 @@ export function TransactionRow({ item, showDivider, onPress, perspectiveAccountI
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, paddingVertical: 14 },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.border },
   pressed: { opacity: 0.7 },
@@ -85,4 +86,4 @@ const styles = StyleSheet.create({
   meta: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
   amount: { color: colors.text, fontSize: 16, fontWeight: '700' },
   income: { color: colors.accent },
-});
+}));

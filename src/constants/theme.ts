@@ -23,7 +23,19 @@ export type ThemeColors = {
   accentSoft: string;
 };
 
-export const lightColors: ThemeColors = {
+export type ThemeMode = 'light' | 'dark';
+
+let activeThemeMode: ThemeMode = 'light';
+
+export function setActiveThemeMode(mode: ThemeMode) {
+  activeThemeMode = mode;
+}
+
+export function getActiveThemeMode() {
+  return activeThemeMode;
+}
+
+const lightPalette: ThemeColors = {
   background: '#F6F8F7',
   surface: '#FFFFFF',
   surfaceAlt: '#EDF2EF',
@@ -48,7 +60,7 @@ export const lightColors: ThemeColors = {
   accentSoft: '#E3F5EC',
 };
 
-export const darkColors: ThemeColors = {
+const darkPalette: ThemeColors = {
   background: '#0E1512',
   surface: '#16201C',
   surfaceAlt: '#1D2A25',
@@ -72,6 +84,14 @@ export const darkColors: ThemeColors = {
   accent: '#4CC29A',
   accentSoft: '#1B3A30',
 };
+
+export const lightColors: ThemeColors = new Proxy(lightPalette, {
+  get(target, property: keyof ThemeColors) {
+    return activeThemeMode === 'dark' ? darkPalette[property] : target[property];
+  },
+});
+
+export const darkColors: ThemeColors = darkPalette;
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 export const radius = { sm: 10, md: 14, lg: 20, pill: 999 } as const;

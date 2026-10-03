@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
@@ -370,7 +371,7 @@ export function TaskCalendar({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background }, flex: { flex: 1 },
   header: { paddingHorizontal: spacing.md, gap: spacing.sm },
   content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
@@ -381,7 +382,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap' }, dateCell: { width: '14.2857%', padding: 2 }, weekCell: { minHeight: 85 },
   dateButton: { minHeight: 68, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   selectedDate: { backgroundColor: colors.primarySoft }, today: { borderColor: colors.primary, borderWidth: 2 }, todayText: { color: colors.primary },
-  drop: { backgroundColor: '#C6EAD6', borderColor: colors.primary }, dots: { flexDirection: 'row', gap: 2, minHeight: 7, marginVertical: 3 },
+  drop: { backgroundColor: colors.successSoft, borderColor: colors.primary }, dots: { flexDirection: 'row', gap: 2, minHeight: 7, marginVertical: 3 },
   dot: { width: 5, height: 5, borderRadius: 3 },
   task: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderLeftWidth: 4, backgroundColor: colors.surface, padding: spacing.sm, borderRadius: radius.sm },
   check: { width: 40, minHeight: 44, alignItems: 'center', justifyContent: 'center' }, strike: { textDecorationLine: 'line-through', color: colors.textMuted },
@@ -394,4 +395,4 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 12, fontWeight: '700', color: colors.text },
   preview: { position: 'absolute', left: 0, top: 0, width: 220, padding: spacing.md, borderRadius: radius.sm, backgroundColor: colors.primary, zIndex: 30, elevation: 8 },
   previewText: { color: colors.onPrimary, fontWeight: '700' },
-});
+}));

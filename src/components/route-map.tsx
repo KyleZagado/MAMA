@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
@@ -71,7 +72,7 @@ export function RouteMap({ points, height = 260 }: { points: RoutePoint[]; heigh
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   box: {
     width: '100%',
     overflow: 'hidden',
@@ -82,4 +83,4 @@ const styles = StyleSheet.create({
   },
   placeholder: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   placeholderText: { color: colors.textSubtle, fontSize: 13 },
-});
+}));

@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -174,7 +175,7 @@ export function LogExercise({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   flex: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: colors.background },
   name: { color: colors.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
@@ -182,4 +183,4 @@ const styles = StyleSheet.create({
   date: { color: colors.primary, fontSize: 14, fontWeight: '600', marginTop: spacing.sm },
   row: { flexDirection: 'row', gap: spacing.md },
   fieldGap: { marginTop: spacing.sm },
-});
+}));

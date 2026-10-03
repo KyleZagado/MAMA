@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
@@ -133,7 +134,7 @@ export function Wallets({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   flex: { flex: 1 },
   safeArea: { flex: 1, backgroundColor: colors.background },
   total: {
@@ -159,4 +160,4 @@ const styles = StyleSheet.create({
   balance: { color: colors.text, fontSize: 16, fontWeight: '700' },
   message: { fontSize: 13 },
   ok: { color: colors.success },
-});
+}));

@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +8,6 @@ import { formStyles } from '../components/form';
 import { ScreenHeader } from '../components/screen-header';
 import { TransactionRow } from '../components/transaction-row';
 import { TransactionDetails } from '../components/transaction-details';
-import { lightColors as colors } from '../constants/theme';
 import { getDatabase } from '../database';
 import { deleteTransaction, type TransactionItem } from '../database/finance';
 import { useFinance } from '../hooks/use-finance';
@@ -66,8 +66,8 @@ export function Transactions({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   empty: { color: colors.textMuted, fontSize: 14 },
   hint: { color: colors.textSubtle, fontSize: 12, textAlign: 'center' },
-});
+}));

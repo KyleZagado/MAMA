@@ -1,7 +1,8 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { lightColors as colors, radius, spacing } from '../constants/theme';
+import { radius, spacing } from '../constants/theme';
 
 export function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
@@ -19,7 +20,7 @@ export function StatGrid({ children }: { children: React.ReactNode }) {
   return <View style={styles.grid}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   stat: {
     flexGrow: 1,
@@ -33,4 +34,4 @@ const styles = StyleSheet.create({
   label: { color: colors.textSubtle, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
   value: { color: colors.text, fontSize: 26, fontWeight: '800', marginTop: spacing.xs },
   unit: { color: colors.textMuted, fontSize: 14, fontWeight: '600' },
-});
+}));

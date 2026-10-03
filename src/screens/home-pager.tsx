@@ -1,3 +1,4 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import type { Session } from '@supabase/supabase-js';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -14,7 +15,6 @@ import {
 } from 'react-native';
 
 import { HOME_PAGES, type HomePageId } from '../constants/home-pages';
-import { lightColors as colors } from '../constants/theme';
 import { loadHomePageOrder } from '../lib/home-page-preference';
 import { refreshWidgets } from '../widgets/refresh';
 import { Consumption } from './consumption';
@@ -133,7 +133,7 @@ export function HomePager({ session }: { session: Session }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   dots: {
     position: 'absolute',
@@ -155,4 +155,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
-});
+}));

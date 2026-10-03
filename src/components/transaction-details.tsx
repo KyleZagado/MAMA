@@ -1,9 +1,10 @@
+import { createThemedStyleSheet } from '../providers/theme-provider';
 import React from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { categoryInfo } from '../constants/finance';
-import { lightColors as colors, spacing } from '../constants/theme';
+import { spacing } from '../constants/theme';
 import type { TransactionItem } from '../database/finance';
 import { formatMoney } from '../lib/money';
 import { receiptPhotoUri } from '../lib/receipt-photos';
@@ -79,7 +80,7 @@ function Detail({ label, value }: { label: string; value?: string | null }) {
   return <View style={styles.group}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value}</Text></View>;
 }
 
-const styles = StyleSheet.create({
+const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   title: { color: colors.text, fontSize: 18, fontWeight: '700' },
@@ -91,4 +92,4 @@ const styles = StyleSheet.create({
   receipt: { width: '100%', height: 400, backgroundColor: colors.surface },
   delete: { minHeight: 48, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.dangerSoft },
   deleteText: { color: colors.danger, fontWeight: '700' },
-});
+}));
