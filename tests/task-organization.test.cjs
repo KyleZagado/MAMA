@@ -148,7 +148,7 @@ test('version 12 databases without the list catalog upgrade without losing organ
     await migrate(db);
     assert.deepEqual(await listTaskLists(db), ['Work']);
     assert.equal((await getTodo(db, id)).favorite, 1);
-    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 14);
+    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 15);
     await undoTaskAction(db);
     assert.equal(await getTodo(db, id), null);
   } finally { native.close(); }

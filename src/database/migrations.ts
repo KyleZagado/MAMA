@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 14;
+const DATABASE_VERSION = 15;
 
 export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -307,6 +307,47 @@ export async function migrate(db: SQLiteDatabase) {
           ON fasting_sessions(kind) WHERE ended_at IS NULL;
         PRAGMA user_version = 14;
       `);
+    });
+  }
+
+  if (version < 15) {
+    const fastingColumns = new Set(
+      (await db.getAllAsync<{ name: string }>('PRAGMA table_info(fasting_sessions)')).map(
+        (column) => column.name,
+      ),
+    );
+    const migration: string[] = [];
+    if (!fastingColumns.has('state')) {
+      migration.push(`
+        ALTER TABLE fasting_sessions ADD COLUMN state TEXT NOT NULL DEFAULT 'active'
+          CHECK (state IN ('active', 'paused', 'completed', 'cancelled'))
+      `);
+      migration.push(`
+        UPDATE fasting_sessions
+        SET state = CASE WHEN ended_at IS NULL THEN 'active' ELSE 'completed' END
+      `);
+    }
+    if (!fastingColumns.has('paused_at')) {
+      migration.push('ALTER TABLE fasting_sessions ADD COLUMN paused_at INTEGER');
+    }
+    if (!fastingColumns.has('paused_duration_ms')) {
+      migration.push(
+        'ALTER TABLE fasting_sessions ADD COLUMN paused_duration_ms INTEGER NOT NULL DEFAULT 0',
+      );
+    }
+    if (!fastingColumns.has('planned_end_at')) {
+      migration.push('ALTER TABLE fasting_sessions ADD COLUMN planned_end_at INTEGER');
+      migration.push(`
+        UPDATE fasting_sessions
+        SET planned_end_at = CASE
+          WHEN target_minutes IS NOT NULL THEN started_at + target_minutes * 60000
+          ELSE NULL
+        END
+      `);
+    }
+    migration.push('PRAGMA user_version = 15');
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(migration.join(';'));
     });
   }
 

@@ -19,6 +19,13 @@ two reduced-intake day check-ins per Monday–Sunday week; it is treated as a
 weekly eating pattern rather than a fixed-hour fast. Fasting is not suitable for
 everyone; seek healthcare advice before trying extended fasts.
 
+During a fast, switch between elapsed-time count-up and remaining-time
+countdown, pause/resume, end or cancel, and adjust the goal in 30-minute steps.
+Edit active start/planned-end times or correct the start/end times of a completed
+session. The timer shows goal progress, a timeline, current phase, daily status,
+and the next eating/fasting window based on the selected protocol. Eating-window
+and phase estimates are informational and do not provide medical guidance.
+
 ## Quick expense entry
 
 Use **Add Expense** on the finance dashboard. Enter an amount, choose a category
