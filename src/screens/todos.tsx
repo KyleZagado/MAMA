@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
+import { ProfileButton } from '../components/profile-button';
 import { PickerField } from '../components/picker-field';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
@@ -256,13 +257,16 @@ export function Todos({ session }: { session: Session }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.date}>
-          <Text style={styles.weekday}>
-            {now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
+        <View style={styles.headerRow}>
+          <Text style={styles.date}>
+            <Text style={styles.weekday}>
+              {now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
+            </Text>
+            {'  •  '}
+            {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </Text>
-          {'  •  '}
-          {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-        </Text>
+          <ProfileButton session={session} />
+        </View>
         <Text style={styles.greeting}>
           {greeting(now.getHours())}, {firstName(session)}
         </Text>
@@ -511,7 +515,8 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.75 },
   disabled: { opacity: 0.45 },
   fade: { opacity: 0.6 },
-  date: { color: colors.textMuted, fontSize: 15 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  date: { flex: 1, color: colors.textMuted, fontSize: 15 },
   weekday: { color: colors.primary, fontWeight: '800', letterSpacing: 0.6 },
   greeting: {
     color: colors.text,

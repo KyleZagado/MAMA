@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ProfileButton } from '../components/profile-button';
 import { RoundButton } from '../components/round-button';
 import { mealTypeLabel } from '../constants/meals';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
@@ -41,8 +42,13 @@ export function Consumption({ session }: { session: Session }) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.brand}>mama</Text>
-        <Text style={styles.title}>Smart Consumption</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.brand}>mama</Text>
+            <Text style={styles.title}>Smart Consumption</Text>
+          </View>
+          <ProfileButton session={session} />
+        </View>
 
         <View style={styles.dateRow}>
           <RoundButton
@@ -171,6 +177,7 @@ const styles = StyleSheet.create({
     paddingBottom: 130,
   },
   pressed: { opacity: 0.75 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { color: colors.textMuted, fontSize: 13 },
   title: { color: colors.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
   dateRow: {

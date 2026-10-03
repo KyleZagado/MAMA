@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,12 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ProfileButton } from '../components/profile-button';
 import { TransactionRow } from '../components/transaction-row';
 import { accountTypeInfo } from '../constants/finance';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import { useCurrency } from '../hooks/use-currency';
 import { useFinance } from '../hooks/use-finance';
-import { supabase } from '../lib/supabase';
 import { formatMoney } from '../lib/money';
 
 type DashboardProps = {
@@ -34,34 +33,12 @@ function firstName(session: Session) {
     : (session.user.email?.split('@')[0] ?? 'there');
 }
 
-function photoUrl(session: Session) {
-  const url = session.user.user_metadata?.avatar_url;
-  return typeof url === 'string' && url ? url : null;
-}
-
 export function Dashboard({ session }: DashboardProps) {
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [signOutError, setSignOutError] = useState<string | null>(null);
   const { wallets, transactions, totalMinor, goalMinor, changePercent, isLoading, error } =
     useFinance(session.user.id, RECENT_LIMIT);
 
   const currency = useCurrency();
-  const photo = photoUrl(session);
   const goalProgress = goalMinor ? Math.max(0, Math.min(totalMinor / goalMinor, 1)) : 0;
-
-  async function handleSignOut() {
-    if (!supabase) return;
-    setIsSigningOut(true);
-    setSignOutError(null);
-    try {
-      const { error: signOutFailure } = await supabase.auth.signOut();
-      if (signOutFailure) throw signOutFailure;
-    } catch (failure: unknown) {
-      setSignOutError(failure instanceof Error ? failure.message : 'Please try again.');
-    } finally {
-      setIsSigningOut(false);
-    }
-  }
 
   function addTransaction() {
     router.push(wallets.length ? '/add-transaction' : '/wallet-form');
@@ -75,32 +52,7 @@ export function Dashboard({ session }: DashboardProps) {
             <Text style={styles.brand}>mama</Text>
             <Text style={styles.greeting}>Hi, {firstName(session)}</Text>
           </View>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push('/profile')}
-              style={({ pressed }) => [styles.avatar, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel="Open profile"
-            >
-              {photo ? (
-                <Image source={{ uri: photo }} style={styles.avatarImage} />
-              ) : (
-                <Text style={styles.avatarText}>{firstName(session).charAt(0).toUpperCase()}</Text>
-              )}
-            </Pressable>
-            <Pressable
-              onPress={handleSignOut}
-              disabled={isSigningOut}
-              style={({ pressed }) => [styles.signOutButton, pressed && styles.pressed]}
-              accessibilityRole="button"
-            >
-              {isSigningOut ? (
-                <ActivityIndicator color={colors.primary} size="small" />
-              ) : (
-                <Text style={styles.signOutText}>Sign out</Text>
-              )}
-            </Pressable>
-          </View>
+          <ProfileButton session={session} />
         </View>
 
         <View style={styles.hero}>
@@ -209,11 +161,6 @@ export function Dashboard({ session }: DashboardProps) {
         )}
 
         {error && <Text style={styles.error}>Could not load your data: {error}</Text>}
-        {signOutError && (
-          <Text style={styles.error} accessibilityLiveRegion="polite">
-            Could not sign out: {signOutError}
-          </Text>
-        )}
       </ScrollView>
 
       <Pressable
@@ -245,7 +192,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 20,
   },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brand: {
     color: colors.primary,
     fontSize: 16,
@@ -254,27 +200,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   greeting: { color: colors.text, fontSize: 26, fontWeight: '700', letterSpacing: -0.8 },
-  avatar: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderRadius: 16,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  avatarImage: { width: '100%', height: '100%' },
-  avatarText: { color: colors.primary, fontSize: 17, fontWeight: '700' },
-  signOutButton: {
-    minHeight: 40,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceAlt,
-  },
-  signOutText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
   hero: {
     padding: 24,
     borderRadius: 32,
