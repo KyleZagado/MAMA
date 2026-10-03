@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 
 export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -107,6 +107,25 @@ export async function migrate(db: SQLiteDatabase) {
       deleted_at INTEGER
     );
     CREATE INDEX IF NOT EXISTS idx_workout_logs_date ON workout_logs(log_date);
+  `);
+  }
+
+  if (version < 5) {
+    await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS activities (
+      id TEXT PRIMARY KEY NOT NULL,
+      type TEXT NOT NULL,
+      log_date TEXT NOT NULL,
+      started_at INTEGER NOT NULL,
+      duration_s INTEGER NOT NULL,
+      distance_m REAL NOT NULL,
+      steps INTEGER,
+      calories INTEGER NOT NULL,
+      route TEXT,
+      created_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_activities_date ON activities(log_date);
   `);
   }
 

@@ -36,6 +36,20 @@
           "cameraPermission": "MAMA uses your camera so you can photograph your meals.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "MAMA uses your location to record the distance and route of your runs, walks and rides.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isIosBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "MAMA counts your steps while you record an activity."
+        }
       ]
     ]
   }

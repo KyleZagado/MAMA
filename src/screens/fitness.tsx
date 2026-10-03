@@ -11,6 +11,7 @@ import { EXERCISES, MUSCLE_GROUPS, type MuscleGroup } from '../constants/exercis
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
 import { deleteWorkoutLog, type WorkoutLog } from '../database/workouts';
+import { activityInfo, formatDuration, formatKm } from '../lib/activity';
 import { useWorkouts } from '../hooks/use-workouts';
 import { fromDateKey, toDateKey } from '../lib/dates';
 
@@ -38,7 +39,7 @@ export function Fitness({ session }: { session: Session }) {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const monthKey = monthKeyOf(cursor.year, cursor.month);
-  const { logs, error, reload } = useWorkouts(session.user.id, monthKey);
+  const { logs, activities, error, reload } = useWorkouts(session.user.id, monthKey);
 
   const cells = useMemo(() => {
     const offset = (new Date(cursor.year, cursor.month, 1).getDay() + 6) % 7;
@@ -49,8 +50,13 @@ export function Fitness({ session }: { session: Session }) {
     ];
   }, [cursor]);
 
-  const daysWithLogs = useMemo(() => new Set(logs.map((log) => log.log_date)), [logs]);
+  const daysWithLogs = useMemo(
+    () => new Set([...logs.map((log) => log.log_date), ...activities.map((a) => a.log_date)]),
+    [logs, activities],
+  );
   const selectedLogs = logs.filter((log) => log.log_date === selectedKey);
+  const selectedActivities = activities.filter((a) => a.log_date === selectedKey);
+  const selectedCount = selectedLogs.length + selectedActivities.length;
 
   const exercises = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -114,6 +120,21 @@ export function Fitness({ session }: { session: Session }) {
           <ProfileButton session={session} />
         </View>
 
+        <Pressable
+          onPress={() => router.push('/activity')}
+          style={({ pressed }) => [styles.record, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          <View style={styles.recordIcon}>
+            <Ionicons name="navigate" size={22} color={colors.heroBackground} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.recordTitle}>Record an activity</Text>
+            <Text style={styles.recordMeta}>Run, walk or ride with distance, steps and calories</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.heroTextMuted} />
+        </Pressable>
+
         <View style={styles.card}>
           <View style={styles.monthRow}>
             <RoundButton icon="chevron-back" label="Previous month" size={36} onPress={() => changeMonth(-1)} />
@@ -164,9 +185,33 @@ export function Fitness({ session }: { session: Session }) {
         <View style={styles.sectionHeading}>
           <Text style={styles.sectionTitle}>{selectedTitle}</Text>
           <Text style={styles.sectionMeta}>
-            {selectedLogs.length} {selectedLogs.length === 1 ? 'exercise' : 'exercises'}
+            {selectedCount} {selectedCount === 1 ? 'entry' : 'entries'}
           </Text>
         </View>
+        {selectedActivities.map((activity) => {
+          const info = activityInfo(activity.type);
+          return (
+            <Pressable
+              key={activity.id}
+              onPress={() => router.push({ pathname: '/activity-detail', params: { id: activity.id } })}
+              style={[styles.logRow, styles.divider]}
+              accessibilityRole="button"
+              accessibilityLabel={`${info.label}, ${formatKm(activity.distance_m)} kilometers`}
+            >
+              <View style={[styles.logIcon, styles.activityIcon]}>
+                <Ionicons name={info.icon} size={20} color={colors.accent} />
+              </View>
+              <View style={styles.flex}>
+                <Text style={styles.rowTitle}>{info.label}</Text>
+                <Text style={styles.rowMeta}>
+                  {formatDuration(activity.duration_s)} · {activity.calories} kcal
+                  {activity.steps !== null ? ` · ${activity.steps.toLocaleString('en-US')} steps` : ''}
+                </Text>
+              </View>
+              <Text style={styles.logValue}>{formatKm(activity.distance_m)} km</Text>
+            </Pressable>
+          );
+        })}
         {selectedLogs.length ? (
           selectedLogs.map((log, index) => (
             <Pressable
@@ -189,9 +234,11 @@ export function Fitness({ session }: { session: Session }) {
             </Pressable>
           ))
         ) : (
-          <Text style={styles.empty}>No workout logged. Pick an exercise below to add one.</Text>
+          selectedActivities.length === 0 && (
+            <Text style={styles.empty}>No workout logged. Pick an exercise below to add one.</Text>
+          )
         )}
-        {selectedLogs.length > 0 && <Text style={styles.hint}>Tap an entry to remove it.</Text>}
+        {selectedLogs.length > 0 && <Text style={styles.hint}>Tap an exercise to remove it.</Text>}
 
         <View style={styles.sectionHeading}>
           <Text style={styles.sectionTitle}>Exercises</Text>
@@ -294,6 +341,26 @@ const styles = StyleSheet.create({
   },
   brand: { color: colors.textMuted, fontSize: 13 },
   title: { color: colors.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
+  record: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderRadius: 24,
+    backgroundColor: colors.heroBackground,
+  },
+  recordIcon: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: colors.accent,
+  },
+  recordTitle: { color: colors.heroText, fontSize: 16, fontWeight: '800' },
+  recordMeta: { color: colors.heroTextMuted, fontSize: 12, marginTop: 2 },
+  activityIcon: { backgroundColor: colors.accentSoft },
   card: {
     padding: spacing.lg,
     borderRadius: 24,
