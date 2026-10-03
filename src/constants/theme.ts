@@ -19,6 +19,8 @@ export type ThemeColors = {
   heroBackground: string;
   heroText: string;
   heroTextMuted: string;
+  accent: string;
+  accentSoft: string;
 };
 
 export const lightColors: ThemeColors = {
@@ -39,9 +41,11 @@ export const lightColors: ThemeColors = {
   success: '#276448',
   successSoft: '#EAF5EF',
   overlay: 'rgba(12, 28, 22, 0.45)',
-  heroBackground: '#155C49',
+  heroBackground: '#111827',
   heroText: '#FFFFFF',
-  heroTextMuted: '#BDD5CB',
+  heroTextMuted: '#9AA3B2',
+  accent: '#4CB782',
+  accentSoft: '#E3F5EC',
 };
 
 export const darkColors: ThemeColors = {
@@ -65,6 +69,8 @@ export const darkColors: ThemeColors = {
   heroBackground: '#1A4A3B',
   heroText: '#F2FAF6',
   heroTextMuted: '#A9C7BB',
+  accent: '#4CC29A',
+  accentSoft: '#1B3A30',
 };
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;

@@ -1,7 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,504 +13,354 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { TransactionRow } from '../components/transaction-row';
+import { accountTypeInfo } from '../constants/finance';
+import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
+import { useCurrency } from '../hooks/use-currency';
+import { useFinance } from '../hooks/use-finance';
 import { supabase } from '../lib/supabase';
+import { formatMoney } from '../lib/money';
 
 type DashboardProps = {
   session: Session;
 };
 
-const transactions = [
-  {
-    merchant: 'Grocery market',
-    category: 'Food & groceries',
-    amount: '-$84.20',
-    mark: 'G',
-    color: '#EAF2E9',
-  },
-  {
-    merchant: 'Monthly salary',
-    category: 'Income',
-    amount: '+$3,250.00',
-    mark: '↗',
-    color: '#E4F3EA',
-  },
-  {
-    merchant: 'Electric bill',
-    category: 'Home & utilities',
-    amount: '-$96.40',
-    mark: '⌂',
-    color: '#F4EEE5',
-  },
-];
+const RECENT_LIMIT = 5;
 
 function firstName(session: Session) {
   const fullName = session.user.user_metadata?.display_name;
   return typeof fullName === 'string' && fullName.trim()
     ? fullName.trim().split(/\s+/)[0]
-    : session.user.email?.split('@')[0] ?? 'there';
+    : (session.user.email?.split('@')[0] ?? 'there');
+}
+
+function photoUrl(session: Session) {
+  const url = session.user.user_metadata?.avatar_url;
+  return typeof url === 'string' && url ? url : null;
 }
 
 export function Dashboard({ session }: DashboardProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const { wallets, transactions, totalMinor, goalMinor, changePercent, isLoading, error } =
+    useFinance(session.user.id, RECENT_LIMIT);
+
+  const currency = useCurrency();
+  const photo = photoUrl(session);
+  const goalProgress = goalMinor ? Math.max(0, Math.min(totalMinor / goalMinor, 1)) : 0;
 
   async function handleSignOut() {
     if (!supabase) return;
     setIsSigningOut(true);
     setSignOutError(null);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    } catch (error: unknown) {
-      setSignOutError(
-        error instanceof Error ? error.message : 'Please try again.',
-      );
+      const { error: signOutFailure } = await supabase.auth.signOut();
+      if (signOutFailure) throw signOutFailure;
+    } catch (failure: unknown) {
+      setSignOutError(failure instanceof Error ? failure.message : 'Please try again.');
     } finally {
       setIsSigningOut(false);
     }
   }
 
+  function addTransaction() {
+    router.push(wallets.length ? '/add-transaction' : '/wallet-form');
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
             <Text style={styles.brand}>mama</Text>
             <Text style={styles.greeting}>Hi, {firstName(session)}</Text>
           </View>
           <View style={styles.headerActions}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {firstName(session).charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <Pressable
+              onPress={() => router.push('/profile')}
+              style={({ pressed }) => [styles.avatar, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Open profile"
+            >
+              {photo ? (
+                <Image source={{ uri: photo }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{firstName(session).charAt(0).toUpperCase()}</Text>
+              )}
+            </Pressable>
             <Pressable
               onPress={handleSignOut}
               disabled={isSigningOut}
-              style={({ pressed }) => [
-                styles.signOutButton,
-                pressed && styles.signOutButtonPressed,
-              ]}
+              style={({ pressed }) => [styles.signOutButton, pressed && styles.pressed]}
               accessibilityRole="button"
             >
-            {isSigningOut ? (
-              <ActivityIndicator color="#16745A" size="small" />
-            ) : (
+              {isSigningOut ? (
+                <ActivityIndicator color={colors.primary} size="small" />
+              ) : (
                 <Text style={styles.signOutText}>Sign out</Text>
-            )}
+              )}
             </Pressable>
           </View>
         </View>
 
-        <View style={styles.sampleBanner}>
-          <View style={styles.sampleDot} />
-          <Text style={styles.sampleText}>
-            Sample dashboard · Connect your accounts to see your numbers
+        <View style={styles.hero}>
+          <View style={styles.heroTop}>
+            <Text style={styles.heroLabel}>Total Stash Balance</Text>
+            {changePercent !== null && (
+              <View style={styles.pill}>
+                <Text style={styles.pillText}>
+                  {changePercent > 0 ? '+' : ''}
+                  {changePercent.toFixed(1)}%
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.heroAmount} adjustsFontSizeToFit numberOfLines={1}>
+            {formatMoney(totalMinor, { currency })}
           </Text>
-        </View>
-
-        <View style={styles.balanceCard}>
-          <View style={styles.balanceTopRow}>
-            <Text style={styles.balanceLabel}>TOTAL BALANCE</Text>
-            <Text style={styles.period}>THIS MONTH</Text>
-          </View>
-          <Text style={styles.balanceAmount}>$12,450.80</Text>
-          <View style={styles.balanceChange}>
-            <Text style={styles.changePill}>↗ 8.2%</Text>
-            <Text style={styles.changeCaption}>compared to last month</Text>
-          </View>
-          <View style={styles.balanceRule} />
-          <View style={styles.balanceFooter}>
-            <View>
-              <Text style={styles.balanceFooterLabel}>INCOME</Text>
-              <Text style={styles.balanceFooterValue}>$4,250.00</Text>
-            </View>
-            <View style={styles.balanceDivider} />
-            <View>
-              <Text style={styles.balanceFooterLabel}>SPENDING</Text>
-              <Text style={styles.balanceFooterValue}>$2,180.40</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.sectionHeading}>
-          <Text style={styles.sectionTitle}>Monthly spending</Text>
-        </View>
-        <View style={styles.spendingCard}>
-          <View style={styles.spendingInfo}>
-            <View>
-              <Text style={styles.spendingCaption}>You’ve used</Text>
-              <Text style={styles.spendingTotal}>
-                $2,180 <Text style={styles.spendingOf}>of $3,000</Text>
-              </Text>
-            </View>
-            <Text style={styles.spendingPercent}>73%</Text>
-          </View>
-          <View
-            style={styles.progressTrack}
-            accessibilityRole="progressbar"
-            accessibilityValue={{ min: 0, max: 100, now: 73 }}
-          >
-            <View style={styles.progressValue} />
-          </View>
-          <Text style={styles.remainingText}>
-            $820 left in your monthly budget
-          </Text>
-        </View>
-
-        <View style={styles.sectionHeading}>
-          <Text style={styles.sectionTitle}>Recent activity</Text>
-        </View>
-        <View style={styles.transactionCard}>
-          {transactions.map((transaction, index) => (
-            <View
-              key={transaction.merchant}
-              style={[
-                styles.transactionRow,
-                index < transactions.length - 1 && styles.transactionBorder,
-              ]}
-            >
+          {goalMinor ? (
+            <Pressable onPress={() => router.push('/wallets')} style={styles.goalRow}>
+              <Text style={styles.goalText}>Goal: {formatMoney(goalMinor, { currency, compact: true })}</Text>
               <View
-                style={[
-                  styles.transactionMark,
-                  { backgroundColor: transaction.color },
-                ]}
+                style={styles.track}
+                accessibilityRole="progressbar"
+                accessibilityValue={{ min: 0, max: 100, now: Math.round(goalProgress * 100) }}
               >
-                <Text style={styles.transactionMarkText}>
-                  {transaction.mark}
-                </Text>
+                <View style={[styles.fill, { width: `${goalProgress * 100}%` }]} />
               </View>
-              <View style={styles.transactionDetails}>
-                <Text style={styles.transactionMerchant}>
-                  {transaction.merchant}
-                </Text>
-                <Text style={styles.transactionCategory}>
-                  {transaction.category}
-                </Text>
-              </View>
-              <Text
-                style={[
-                  styles.transactionAmount,
-                  transaction.amount.startsWith('+') && styles.incomeAmount,
-                ]}
-              >
-                {transaction.amount}
-              </Text>
-            </View>
-          ))}
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => router.push('/wallets')} style={styles.goalRow}>
+              <Text style={styles.goalText}>Set a savings goal</Text>
+              <View style={styles.track} />
+            </Pressable>
+          )}
         </View>
 
+        <View style={styles.sectionHeading}>
+          <Text style={styles.sectionTitle}>My Wallets</Text>
+          <Pressable onPress={() => router.push('/wallets')} hitSlop={8}>
+            <Text style={styles.sectionLink}>Manage</Text>
+          </Pressable>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.walletScroll}
+          nestedScrollEnabled
+          contentContainerStyle={styles.walletRow}
+        >
+          {wallets.map((wallet) => {
+            const info = accountTypeInfo(wallet.type);
+            return (
+              <Pressable
+                key={wallet.id}
+                onPress={() => router.push({ pathname: '/wallet-form', params: { id: wallet.id } })}
+                style={({ pressed }) => [styles.walletCard, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`${wallet.name}, ${formatMoney(wallet.balance_minor, { currency })}`}
+              >
+                <View style={styles.walletTop}>
+                  <View style={[styles.walletIcon, { backgroundColor: info.background }]}>
+                    <Ionicons name={info.icon} size={22} color={info.foreground} />
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textSubtle} />
+                </View>
+                <Text style={styles.walletName} numberOfLines={1}>
+                  {wallet.name}
+                </Text>
+                <Text style={styles.walletBalance} numberOfLines={1}>
+                  {formatMoney(wallet.balance_minor, { currency, compact: true })}
+                </Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            onPress={() => router.push('/wallet-form')}
+            style={({ pressed }) => [styles.walletCard, styles.addCard, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Add wallet"
+          >
+            <Ionicons name="add-circle-outline" size={30} color={colors.primary} />
+            <Text style={styles.addText}>Add wallet</Text>
+          </Pressable>
+        </ScrollView>
+
+        <View style={styles.sectionHeading}>
+          <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          <Pressable onPress={() => router.push('/transactions')} hitSlop={8}>
+            <Text style={styles.sectionLink}>See All</Text>
+          </Pressable>
+        </View>
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={styles.loading} />
+        ) : transactions.length ? (
+          <View>
+            {transactions.map((item, index) => (
+              <TransactionRow key={item.id} item={item} showDivider={index < transactions.length - 1} />
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.empty}>
+            {wallets.length
+              ? 'No transactions yet. Tap + to add your first one.'
+              : 'Create a wallet to start tracking your money.'}
+          </Text>
+        )}
+
+        {error && <Text style={styles.error}>Could not load your data: {error}</Text>}
         {signOutError && (
-          <Text style={styles.signOutError} accessibilityLiveRegion="polite">
+          <Text style={styles.error} accessibilityLiveRegion="polite">
             Could not sign out: {signOutError}
           </Text>
         )}
-        <Text style={styles.disclaimer}>
-          Demo figures only. Your real financial data is not connected yet.
-        </Text>
       </ScrollView>
+
+      <Pressable
+        onPress={addTransaction}
+        style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Add transaction"
+      >
+        <Ionicons name="add" size={30} color={colors.onPrimary} />
+      </Pressable>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F6F8F7',
-  },
+  safeArea: { flex: 1, backgroundColor: colors.background },
   content: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: 22,
-    paddingTop: 12,
-    paddingBottom: 32,
+    paddingTop: spacing.md,
+    paddingBottom: 110,
   },
+  pressed: { opacity: 0.75 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brand: {
-    color: '#16745A',
+    color: colors.primary,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.4,
     marginBottom: 4,
   },
-  greeting: {
-    color: '#17342C',
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: -0.8,
-  },
+  greeting: { color: colors.text, fontSize: 26, fontWeight: '700', letterSpacing: -0.8 },
   avatar: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     borderRadius: 16,
-    backgroundColor: '#E2F0E9',
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: '#D2E6DA',
+    borderColor: colors.border,
   },
-  avatarText: {
-    color: '#16745A',
-    fontSize: 17,
-    fontWeight: '700',
-  },
+  avatarImage: { width: '100%', height: '100%' },
+  avatarText: { color: colors.primary, fontSize: 17, fontWeight: '700' },
   signOutButton: {
     minHeight: 40,
     justifyContent: 'center',
     paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: '#EAF1ED',
+    backgroundColor: colors.surfaceAlt,
   },
-  signOutButtonPressed: {
-    opacity: 0.75,
+  signOutText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
+  hero: {
+    padding: 24,
+    borderRadius: 32,
+    backgroundColor: colors.heroBackground,
+    gap: spacing.md,
   },
-  signOutText: {
-    color: '#386653',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  sampleBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroLabel: { color: colors.heroTextMuted, fontSize: 16 },
+  pill: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 16,
-    borderRadius: 12,
-    backgroundColor: '#EDF2EF',
-  },
-  sampleDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#C4833D',
-  },
-  sampleText: {
-    flex: 1,
-    color: '#66776E',
-    fontSize: 11,
-    lineHeight: 16,
-  },
-  balanceCard: {
-    overflow: 'hidden',
-    padding: 21,
-    borderRadius: 24,
-    backgroundColor: '#155C49',
-  },
-  balanceTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  balanceLabel: {
-    color: '#B9D7CB',
-    fontSize: 10,
-    letterSpacing: 1.2,
-    fontWeight: '700',
-  },
-  period: {
-    color: '#D5E8DF',
-    fontSize: 9,
-    letterSpacing: 0.5,
-    fontWeight: '700',
-    paddingHorizontal: 9,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: '#286D59',
-  },
-  balanceAmount: {
-    color: '#FFFFFF',
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: -1.3,
-    marginTop: 19,
-  },
-  balanceChange: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 9,
-  },
-  changePill: {
-    color: '#B9F0D4',
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 8,
     paddingVertical: 5,
-    borderRadius: 7,
-    backgroundColor: '#26745C',
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
   },
-  changeCaption: {
-    color: '#BDD5CB',
-    fontSize: 11,
+  pillText: { color: colors.heroBackground, fontSize: 13, fontWeight: '700' },
+  heroAmount: { color: colors.heroText, fontSize: 44, fontWeight: '800', letterSpacing: -1 },
+  goalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, marginTop: spacing.xs },
+  goalText: { color: colors.heroTextMuted, fontSize: 14 },
+  track: {
+    flex: 1,
+    height: 6,
+    overflow: 'hidden',
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  balanceRule: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#4B806F',
-    marginTop: 22,
-    marginBottom: 17,
-  },
-  balanceFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-  },
-  balanceFooterLabel: {
-    color: '#B9D7CB',
-    fontSize: 9,
-    letterSpacing: 1.1,
-    fontWeight: '700',
-    marginBottom: 7,
-  },
-  balanceFooterValue: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  balanceDivider: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch',
-    backgroundColor: '#4B806F',
-  },
+  fill: { height: '100%', borderRadius: radius.pill, backgroundColor: colors.accent },
   sectionHeading: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 27,
-    marginBottom: 13,
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
   },
-  sectionTitle: {
-    color: '#17342C',
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  spendingCard: {
-    padding: 17,
-    borderRadius: 19,
+  sectionTitle: { color: colors.text, fontSize: 22, fontWeight: '700', letterSpacing: -0.4 },
+  sectionLink: { color: colors.accent, fontSize: 16, fontWeight: '600' },
+  walletScroll: { marginHorizontal: -22 },
+  walletRow: { paddingHorizontal: 22, gap: spacing.md },
+  walletCard: {
+    width: 156,
+    padding: spacing.lg,
+    borderRadius: 24,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E8ECE9',
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.border,
   },
-  spendingInfo: {
+  walletTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: spacing.lg,
   },
-  spendingCaption: {
-    color: '#7F8C85',
-    fontSize: 12,
-    marginBottom: 5,
-  },
-  spendingTotal: {
-    color: '#17342C',
-    fontSize: 21,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  spendingOf: {
-    color: '#9AA69F',
-    fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: 0,
-  },
-  spendingPercent: {
-    color: '#16745A',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  progressTrack: {
-    height: 8,
-    overflow: 'hidden',
-    borderRadius: 5,
-    backgroundColor: '#E9EFEB',
-  },
-  progressValue: {
-    width: '73%',
-    height: '100%',
-    borderRadius: 5,
-    backgroundColor: '#48A27C',
-  },
-  remainingText: {
-    color: '#78877F',
-    fontSize: 11,
-    marginTop: 11,
-  },
-  transactionCard: {
-    paddingHorizontal: 15,
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: '#E8ECE9',
-    backgroundColor: '#FFFFFF',
-  },
-  transactionRow: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  transactionBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E8ECE9',
-  },
-  transactionMark: {
-    width: 40,
-    height: 40,
+  walletIcon: {
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: radius.md,
   },
-  transactionMarkText: {
-    color: '#326D56',
-    fontSize: 16,
-    fontWeight: '700',
+  walletName: { color: colors.textMuted, fontSize: 15 },
+  walletBalance: { color: colors.text, fontSize: 20, fontWeight: '800', marginTop: 2 },
+  addCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderStyle: 'dashed',
+    borderColor: colors.primary,
+    backgroundColor: 'transparent',
   },
-  transactionDetails: {
-    flex: 1,
-  },
-  transactionMerchant: {
-    color: '#263D34',
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  transactionCategory: {
-    color: '#8A9690',
-    fontSize: 11,
-  },
-  transactionAmount: {
-    color: '#263D34',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  incomeAmount: {
-    color: '#29805C',
-  },
-  signOutError: {
-    color: '#A23F36',
-    fontSize: 12,
-    marginTop: 14,
-  },
-  disclaimer: {
-    color: '#98A49D',
-    fontSize: 11,
-    lineHeight: 17,
-    textAlign: 'center',
-    marginTop: 22,
+  addText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
+  loading: { marginVertical: spacing.xl },
+  empty: { color: colors.textMuted, fontSize: 14, paddingVertical: spacing.lg },
+  error: { color: colors.danger, fontSize: 13, marginTop: spacing.lg },
+  fab: {
+    position: 'absolute',
+    right: 22,
+    bottom: 28,
+    width: 58,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 29,
+    backgroundColor: colors.primary,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
 });

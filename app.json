@@ -28,7 +28,15 @@
       "expo-router",
       "expo-status-bar",
       "expo-sqlite",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "MAMA accesses your photos so you can choose a profile picture.",
+          "cameraPermission": "MAMA uses your camera so you can photograph your meals.",
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

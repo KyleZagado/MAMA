@@ -152,6 +152,7 @@ export interface Account extends Timestamps {
   type: 'cash' | 'bank' | 'ewallet' | 'credit_card' | 'custom';
   currency: string;
   opening_balance_minor: number;
+  details: string | null;
 }
 
 export interface Transaction extends Timestamps {
