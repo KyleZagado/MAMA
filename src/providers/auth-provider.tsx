@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { supabase } from '../lib/supabase';
+import { clearWidgets } from '../widgets/refresh';
 
 type AuthContextValue = {
   session: Session | null;
@@ -57,6 +58,11 @@ export function AuthProvider({ children }: React.PropsWithChildren) {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Widgets must not keep showing a previous user's numbers after sign-out.
+  useEffect(() => {
+    if (!isLoading && !session) clearWidgets();
+  }, [isLoading, session]);
 
   const value = useMemo(
     () => ({ session, isLoading, initializationError }),

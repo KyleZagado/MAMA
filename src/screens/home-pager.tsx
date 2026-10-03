@@ -1,6 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
-import React, { useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AppState,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -11,6 +13,7 @@ import {
 } from 'react-native';
 
 import { lightColors as colors } from '../constants/theme';
+import { refreshWidgets } from '../widgets/refresh';
 import { Consumption } from './consumption';
 import { Dashboard } from './dashboard';
 import { Fitness } from './fitness';
@@ -23,6 +26,20 @@ export function HomePager({ session }: { session: Session }) {
   const scrollRef = useRef<ScrollView>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [page, setPage] = useState(0);
+
+  // Keep the home screen widgets current: refresh on return to this screen and when leaving the app.
+  useFocusEffect(
+    useCallback(() => {
+      refreshWidgets(session);
+    }, [session]),
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') refreshWidgets(session);
+    });
+    return () => subscription.remove();
+  }, [session]);
 
   function onLayout(event: LayoutChangeEvent) {
     const { width, height } = event.nativeEvent.layout;

@@ -50,6 +50,42 @@
         {
           "motionPermission": "MAMA counts your steps while you record an activity."
         }
+      ],
+      [
+        "expo-widgets",
+        {
+          "widgets": [
+            {
+              "name": "MamaWidget",
+              "displayName": "MAMA Today",
+              "description": "Your balance, today's tasks and water intake",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "MamaWidget",
+              "label": "MAMA Today",
+              "description": "Your balance, today's tasks and water intake",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
       ]
     ]
   }
