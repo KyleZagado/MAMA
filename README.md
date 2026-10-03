@@ -97,6 +97,44 @@ and retained when removed/archived/deleted so undo and duplicated tasks can
 still display them. Location and actual time spent are manual fields, not GPS
 tracking or an automatic timer.
 
+## To-Do calendar
+
+Open **Calendar** from the To-Do home or task manager. Switch between Month,
+Week, Day, Agenda (31 days from the selected date), Timeline (a 24-hour time
+grid), and Year overview. Tap a date to see its tasks; tap an entry to open
+its editor/details. Use Today, the date picker, arrows, or a horizontal swipe
+on calendar content to navigate. Current-day borders, colored task markers,
+completion checkboxes, and recurring labels distinguish tasks. Colors use a
+task's chosen label first, then red/high, amber/medium, or blue/low priority.
+Completed, recurring, and overdue task visibility have independent switches.
+All overdue one-off tasks are shown, including passed deadlines today;
+unedited recurring overdue instances use
+a rolling 30-day window. Select older dates to view earlier recurring instances.
+
+Drag a task grip onto a visible date cell to move it without changing its
+times. In Timeline view, drag onto a time to set the start in 15-minute steps,
+preserving duration and shifting the due time by the same amount. All-day tasks
+become timed with a 30-minute duration when dropped on a time. Drag the resize
+grip on a task with a start time to adjust its end time and estimated duration.
+The task editor remains available for exact times. Drops that would shift a
+task or its due time beyond the day are rejected explicitly. Dragging does not
+auto-scroll: scroll to the desired time first or use the editor for distant
+times. Overlapping timeline tasks occupy separate columns; short tasks have
+a minimum visual size for their controls, with exact times shown in the label.
+
+The task editor now supports Daily, Weekly on selected weekdays, and Monthly
+repeat rules. A monthly task on the 31st uses the last day of shorter months.
+The due date anchors the series. Calendar completion, moving, resizing, and
+editing apply to one occurrence; **Edit repeat series** changes the template
+for unedited dates. Saved exceptions keep their own dates, times, status,
+checklists, and attachments. Archive/delete a series in Manage Tasks to hide
+all its occurrences; archive/delete an individual saved occurrence to hide
+just that date. Undo restores calendar changes and previously existing undo
+history survives the calendar database upgrade. The To-Do home and widget
+expand recurring tasks from 30 days ago through one year ahead.
+Manage Tasks lists repeat templates separately; use Calendar to complete
+individual recurring dates rather than bulk-completing a repeat template.
+
 ## Configure Supabase
 
 1. Create a project in the [Supabase dashboard](https://supabase.com/dashboard).
@@ -120,7 +158,7 @@ environment used by the build. Do not commit `.env` or credentials.
 npm run lint
 npx tsc --noEmit
 npx expo-doctor
-node --test tests/finance.test.cjs tests/tasks.test.cjs
+node --test tests/finance.test.cjs tests/tasks.test.cjs tests/calendar.test.cjs
 ```
 
 The finance regression tests use Node's built-in SQLite module (Node 22.13+
@@ -128,4 +166,6 @@ or a newer supported LTS release) to check migrations, persisted expense details
 historical timestamps, income/transfer behavior, pay-date recurrence, confirmation
 deduplication, and complete monthly/annual totals. Task tests cover the schema
 upgrade, all metadata, single/bulk actions, persistent ordering, undo, validation,
-and preservation of existing tasks.
+and preservation of existing tasks. Calendar tests cover view ranges, navigation,
+daily/weekly/monthly recurrence, occurrence exceptions, time dragging/resizing,
+and undo preservation during upgrades.

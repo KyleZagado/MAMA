@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 10;
+const DATABASE_VERSION = 11;
 
 export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -238,6 +238,23 @@ export async function migrate(db: SQLiteDatabase) {
           after_rows TEXT NOT NULL
         );
         PRAGMA user_version = 10;
+      `);
+    });
+  }
+
+  if (version < 11) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        ALTER TABLE tasks ADD COLUMN recurrence_rule TEXT;
+        ALTER TABLE tasks ADD COLUMN series_id TEXT;
+        ALTER TABLE tasks ADD COLUMN occurrence_date TEXT;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_task_occurrence ON tasks(series_id, occurrence_date);
+        UPDATE task_undo SET
+          before_rows = (SELECT json_group_array(json_set(value,
+            '$.recurrence_rule', NULL, '$.series_id', NULL, '$.occurrence_date', NULL)) FROM json_each(before_rows)),
+          after_rows = (SELECT json_group_array(json_set(value,
+            '$.recurrence_rule', NULL, '$.series_id', NULL, '$.occurrence_date', NULL)) FROM json_each(after_rows));
+        PRAGMA user_version = 11;
       `);
     });
   }

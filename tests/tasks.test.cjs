@@ -40,7 +40,7 @@ test('task migration preserves old fields, converts timed tasks and is repeatabl
     assert.deepEqual(timed.subtasks, []);
     assert.deepEqual(timed.photos, []);
     assert.equal((await getTodo(db, 'all-day')).all_day, 1);
-    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 10);
+    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 11);
   } finally { native.close(); }
 });
 

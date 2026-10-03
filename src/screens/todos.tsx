@@ -241,7 +241,9 @@ export function Todos({ session }: { session: Session }) {
   }
 
   function openMenu(todo: Todo) {
-    router.push({ pathname: '/task-form', params: { id: todo.id } });
+    const separator = todo.id.lastIndexOf('/');
+    router.push({ pathname: '/task-form', params: separator < 0 ? { id: todo.id }
+      : { id: todo.id.slice(0, separator), occurrence: todo.id.slice(separator + 1) } });
   }
 
   function renderCards(list: Todo[]) {
@@ -281,6 +283,7 @@ export function Todos({ session }: { session: Session }) {
         </Text>
         <ChipRow>
           <Chip label="New detailed task" selected={false} onPress={() => router.push('/task-form')} />
+          <Chip label="Calendar" selected={false} onPress={() => router.push('/task-calendar')} />
           <Chip label="Manage tasks / Bulk / Drag" selected={false} onPress={() => router.push('/tasks')} />
           {undo && <Chip label={`Undo: ${undo}`} selected={false} onPress={() => void run(undoTaskAction)} />}
         </ChipRow>

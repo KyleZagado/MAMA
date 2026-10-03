@@ -49,6 +49,7 @@ function database(filename = ':memory:') {
 }
 
 function removeTaskV10Schema(native) {
+  removeTaskV11Schema(native);
   native.exec('DROP INDEX idx_tasks_date; DROP TABLE task_undo');
   for (const name of ['due_time', 'end_time', 'all_day', 'subtasks', 'photos', 'links',
     'tags', 'color', 'location', 'estimated_minutes', 'actual_minutes', 'archived_at', 'sort_order']) {
@@ -56,4 +57,9 @@ function removeTaskV10Schema(native) {
   }
 }
 
-module.exports = { loadSource, database, removeTaskV10Schema };
+function removeTaskV11Schema(native) {
+  native.exec('DROP INDEX idx_task_occurrence');
+  for (const name of ['recurrence_rule', 'series_id', 'occurrence_date']) native.exec(`ALTER TABLE tasks DROP COLUMN ${name}`);
+}
+
+module.exports = { loadSource, database, removeTaskV10Schema, removeTaskV11Schema };

@@ -16,16 +16,17 @@ import { TASK_CATEGORIES, TASK_COLORS, TASK_PRIORITIES, TASK_STATUSES } from '..
 import { lightColors as colors, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
 import {
-  changeTodos, duplicateTodo, getTodo, saveTodo, type ChecklistItem, type Todo,
+  changeTodos, duplicateTodo, getTodo, listCalendarTodos, saveTodo, type ChecklistItem, type Todo,
   type TodoInput, type TodoPriority, type TodoStatus, validateTodo,
 } from '../database/todos';
 import { fromDateKey, timeKeyToDate, toDateKey, toTimeKey } from '../lib/dates';
 import { removeStoredPhoto, storedPhotoUri, storePhoto } from '../lib/stored-photos';
+import { decodeTaskRepeat, type TaskRepeat } from '../lib/task-calendar';
 
 type Photo = { name: string; uri: string; persisted: boolean };
 
-export function TaskForm({ session, taskId, initialDate }: {
-  session: Session; taskId?: string; initialDate?: string;
+export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
+  session: Session; taskId?: string; initialDate?: string; occurrenceDate?: string;
 }) {
   const [original, setOriginal] = useState<Todo | null>(null);
   const [title, setTitle] = useState('');
@@ -47,6 +48,9 @@ export function TaskForm({ session, taskId, initialDate }: {
   const [location, setLocation] = useState('');
   const [estimate, setEstimate] = useState('');
   const [actual, setActual] = useState('');
+  const [repeat, setRepeat] = useState<TaskRepeat['frequency'] | 'none'>('none');
+  const [weekdays, setWeekdays] = useState<number[]>([new Date().getDay()]);
+  const [virtual, setVirtual] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(taskId));
   const [isSaving, setIsSaving] = useState(false);
   const [isPicking, setIsPicking] = useState(false);
@@ -58,10 +62,17 @@ export function TaskForm({ session, taskId, initialDate }: {
     let active = true;
     (async () => {
       try {
-        const todo = await getTodo(await getDatabase(session.user.id), taskId);
+        const db = await getDatabase(session.user.id);
+        const todo = occurrenceDate
+          ? (await listCalendarTodos(db, occurrenceDate, occurrenceDate)).find((item) => item.series_id === taskId && item.occurrence_date === occurrenceDate)
+          : await getTodo(db, taskId);
         if (!todo) throw new Error('This task is no longer available.');
         if (!active) return;
         setOriginal(todo);
+        setVirtual('virtual' in todo && todo.virtual === true);
+        const rule = decodeTaskRepeat(todo.recurrence_rule);
+        setRepeat(rule?.frequency ?? 'none');
+        setWeekdays(rule?.weekdays ?? [fromDateKey(todo.due_date).getDay()]);
         setTitle(todo.title);
         setNotes(todo.notes ?? '');
         setDueDate(fromDateKey(todo.due_date));
@@ -87,7 +98,7 @@ export function TaskForm({ session, taskId, initialDate }: {
       }
     })();
     return () => { active = false; };
-  }, [taskId, session.user.id]);
+  }, [taskId, session.user.id, occurrenceDate]);
 
   async function pickPhoto(source: 'camera' | 'library') {
     if (busy.current || isPicking) return;
@@ -131,6 +142,7 @@ export function TaskForm({ session, taskId, initialDate }: {
         priority, status, subtasks, photos: [], links: links.split('\n').map((link) => link.trim()).filter(Boolean),
         tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean), category: category || null,
         color, location, estimatedMinutes: duration(estimate), actualMinutes: duration(actual),
+        recurrenceRule: original?.series_id ? null : repeat === 'none' ? null : JSON.stringify({ frequency: repeat, weekdays }),
       };
       validateTodo(input);
       input.photos = photos.map((photo) => {
@@ -139,7 +151,9 @@ export function TaskForm({ session, taskId, initialDate }: {
         copied.push(name);
         return name;
       });
-      await saveTodo(await getDatabase(session.user.id), input, taskId, original?.updated_at);
+      await saveTodo(await getDatabase(session.user.id), input, virtual ? undefined : original?.id,
+        original?.updated_at, virtual && original?.series_id && original.occurrence_date
+          ? { seriesId: original.series_id, date: original.occurrence_date } : undefined);
       saved = true;
     } catch (e: unknown) {
       let message = e instanceof Error ? e.message : 'Could not save this task.';
@@ -165,8 +179,8 @@ export function TaskForm({ session, taskId, initialDate }: {
     let succeeded = false;
     try {
       const db = await getDatabase(session.user.id);
-      if (type === 'duplicate') await duplicateTodo(db, taskId);
-      else await changeTodos(db, [taskId], type === 'delete'
+      if (type === 'duplicate') await duplicateTodo(db, original?.id ?? taskId);
+      else await changeTodos(db, [original?.id ?? taskId], type === 'delete'
         ? { type: 'delete' } : { type: 'archive', archived: !original?.archived_at });
       succeeded = true;
     } catch (e: unknown) {
@@ -193,6 +207,24 @@ export function TaskForm({ session, taskId, initialDate }: {
               <TextInput value={notes} onChangeText={setNotes} multiline maxLength={4000} style={[formStyles.input, styles.multiline]} accessibilityLabel="Task notes" />
               <FieldLabel>DUE DATE</FieldLabel>
               <PickerField mode="date" value={dueDate} onChange={setDueDate} />
+              {original?.series_id ? (
+                <>
+                  <Text style={styles.hint}>Editing only this recurring occurrence. Other dates keep their schedule.</Text>
+                  <Chip label="Edit repeat series" selected={false} onPress={() => {
+                    if (original.series_id) router.push({ pathname: '/task-form', params: { id: original.series_id } });
+                  }} />
+                </>
+              ) : (
+                <>
+                  <FieldLabel>REPEAT</FieldLabel>
+                  <ChipRow>{(['none', 'daily', 'weekly', 'monthly'] as const).map((option) =>
+                    <Chip key={option} label={option === 'none' ? 'Does not repeat' : option} selected={repeat === option} onPress={() => setRepeat(option)} />)}</ChipRow>
+                  {repeat === 'weekly' && <ChipRow>{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) =>
+                    <Chip key={day} label={day} selected={weekdays.includes(index)} onPress={() => setWeekdays((current) =>
+                      current.includes(index) ? current.filter((item) => item !== index) : [...current, index])} />)}</ChipRow>}
+                  {repeat !== 'none' && <Text style={styles.hint}>The due date starts the series. Monthly dates fall on the last day in shorter months. Calendar edits affect one occurrence; edit this series to change future unedited occurrences.</Text>}
+                </>
+              )}
               <View style={styles.row}>
                 <Text style={styles.hint}>All-day task</Text>
                 <Switch value={allDay} onValueChange={setAllDay} accessibilityLabel="All-day task" />
@@ -256,7 +288,7 @@ export function TaskForm({ session, taskId, initialDate }: {
           )}
           {error && <Text style={formStyles.error}>{error}</Text>}
           <PrimaryButton label={taskId ? 'Save task changes' : 'Create task'} disabled={disabled} loading={isSaving} onPress={() => void save()} />
-          {original && (
+          {original && !virtual && (
             <>
               <Text style={styles.hint}>The actions below use the last saved task. Save your edits first to include them.</Text>
               <PrimaryButton label="Duplicate saved task" disabled={disabled} onPress={() => void action('duplicate')} />
@@ -267,6 +299,7 @@ export function TaskForm({ session, taskId, initialDate }: {
             </>
           )}
           <Chip label="Manage tasks / Undo" selected={false} disabled={isSaving || isPicking} onPress={() => router.push('/tasks')} />
+          <Chip label="Task calendar" selected={false} disabled={isSaving || isPicking} onPress={() => router.push('/task-calendar')} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

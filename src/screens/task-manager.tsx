@@ -59,7 +59,7 @@ export function TaskManager({ session }: { session: Session }) {
     setError(null);
     try {
       const db = await getDatabase(session.user.id);
-      const [rows, nextUndo] = await Promise.all([listTodos(db, mode === 'archived'), getTaskUndo(db)]);
+      const [rows, nextUndo] = await Promise.all([listTodos(db, mode === 'archived', false), getTaskUndo(db)]);
       if (token !== request.current) return;
       setTasks(rows);
       setUndo(nextUndo?.label ?? null);
@@ -95,6 +95,10 @@ export function TaskManager({ session }: { session: Session }) {
   }
 
   function perform(ids: string[], action: TaskAction) {
+    if (action.type === 'status' && tasks.some((task) => ids.includes(task.id) && task.recurrence_rule)) {
+      setError('Use Calendar to complete individual recurring dates. Bulk completion here applies to one-off tasks and saved occurrences, not repeat templates.');
+      return;
+    }
     if (action.type === 'delete') {
       Alert.alert(`Delete ${ids.length === 1 ? 'task' : `${ids.length} tasks`}?`, 'You can undo this action here.', [
         { text: 'Cancel', style: 'cancel' },
@@ -178,6 +182,7 @@ export function TaskManager({ session }: { session: Session }) {
           <ScreenHeader title="Manage Tasks" />
           <ChipRow>
             <Chip label="New task" selected={false} disabled={!enabled} onPress={() => router.push({ pathname: '/task-form', params: { date } })} />
+            <Chip label="Calendar" selected={false} disabled={!enabled} onPress={() => router.push('/task-calendar')} />
             <Chip label={selecting ? 'Finish selection' : 'Bulk select'} selected={selecting} disabled={!enabled} onPress={() => { setSelecting(!selecting); setSelection([]); }} />
             {undo && <Chip label={`Undo: ${undo}`} selected={false} disabled={!enabled} onPress={() => void run(undoTaskAction)} />}
           </ChipRow>
@@ -231,8 +236,8 @@ export function TaskManager({ session }: { session: Session }) {
               style={[formStyles.card, item.color && { borderLeftColor: item.color, borderLeftWidth: 5 },
                 hover?.kind === 'task' && hover.key === item.id && styles.dropTarget, dragging?.id === item.id && styles.dragSource]}>
               <View style={styles.row}>
-                <Pressable onPress={() => selecting ? toggleSelection(item.id) : enabled && perform([item.id], { type: 'status', status: item.status === 'done' ? 'todo' : 'done' })}
-                  style={styles.check} accessibilityRole="checkbox" accessibilityState={{ checked: selecting ? selection.includes(item.id) : item.status === 'done' }} accessibilityLabel={`${selecting ? 'Select' : 'Complete'} ${item.title}`}>
+                <Pressable disabled={!selecting && Boolean(item.recurrence_rule)} onPress={() => selecting ? toggleSelection(item.id) : enabled && perform([item.id], { type: 'status', status: item.status === 'done' ? 'todo' : 'done' })}
+                  style={styles.check} accessibilityRole="checkbox" accessibilityState={{ checked: selecting ? selection.includes(item.id) : item.status === 'done', disabled: !selecting && Boolean(item.recurrence_rule) }} accessibilityLabel={`${selecting ? 'Select' : 'Complete'} ${item.title}`}>
                   <Text style={styles.heading}>{(selecting ? selection.includes(item.id) : item.status === 'done') ? '[x]' : '[ ]'}</Text>
                 </Pressable>
                 <Pressable style={styles.flex} onPress={() => selecting ? toggleSelection(item.id) : router.push({ pathname: '/task-form', params: { id: item.id } })} accessibilityRole="button">
@@ -243,6 +248,7 @@ export function TaskManager({ session }: { session: Session }) {
                 {mode !== 'archived' && !selecting && !busy && !isLoading && <TaskDragHandle onStart={(x, y) => startDrag(item, x, y)} onMove={moveDrag} onEnd={endDrag} onCancel={cancelDrag} />}
               </View>
               {item.notes && <Text style={styles.hint} numberOfLines={2}>{item.notes}</Text>}
+              {item.recurrence_rule && <Text style={styles.small}>Repeat series template: use Calendar for individual dates. Archive/delete here affects the whole series.</Text>}
               <Text style={styles.small}>
                 {item.start_time ? `Start ${formatTimeKey(item.start_time)} · ` : ''}{item.end_time ? `End ${formatTimeKey(item.end_time)} · ` : ''}
                 {item.category ?? 'No category'}{item.tags.length ? ` · #${item.tags.join(' #')}` : ''}

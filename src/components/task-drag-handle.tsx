@@ -9,6 +9,7 @@ type DragProps = {
   onMove: (x: number, y: number) => void;
   onEnd: (x: number, y: number) => void;
   onCancel: () => void;
+  resize?: boolean;
 };
 
 export class TaskDragHandle extends React.Component<DragProps> {
@@ -24,8 +25,8 @@ export class TaskDragHandle extends React.Component<DragProps> {
   });
 
   render() {
-    return <View {...this.responder.panHandlers} style={styles.handle} accessibilityLabel="Drag task to a date or reorder in day view">
-      <Ionicons name="reorder-three-outline" size={26} color={colors.textMuted} />
+    return <View {...this.responder.panHandlers} style={styles.handle} accessibilityLabel={this.props.resize ? 'Drag to resize task duration' : 'Drag task to a date or time'}>
+      <Ionicons name={this.props.resize ? 'resize-outline' : 'reorder-three-outline'} size={26} color={colors.textMuted} />
     </View>;
   }
 }

@@ -1,7 +1,8 @@
 import { randomUUID } from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { fromDateKey, toDateKey } from '../lib/dates';
+import { addDaysToKey, fromDateKey, toDateKey, toTimeKey } from '../lib/dates';
+import { decodeTaskRepeat, taskRepeatDates } from '../lib/task-calendar';
 
 export type TodoStatus = 'todo' | 'in_progress' | 'done';
 export type TodoPriority = 'low' | 'medium' | 'high';
@@ -15,6 +16,7 @@ type TodoRow = {
   location: string | null; estimated_minutes: number | null; actual_minutes: number | null;
   archived_at: number | null; sort_order: number; completed_at: number | null;
   created_at: number; updated_at: number; deleted_at: number | null;
+  recurrence_rule: string | null; series_id: string | null; occurrence_date: string | null;
 };
 export type Todo = Omit<TodoRow, 'subtasks' | 'photos' | 'links' | 'tags'> & {
   subtasks: ChecklistItem[]; photos: string[]; links: string[]; tags: string[];
@@ -26,6 +28,7 @@ export type TodoInput = {
   subtasks?: ChecklistItem[]; photos?: string[]; links?: string[]; tags?: string[];
   color?: string | null; location?: string | null;
   estimatedMinutes?: number | null; actualMinutes?: number | null;
+  recurrenceRule?: string | null;
 };
 
 const columns = [
@@ -33,6 +36,7 @@ const columns = [
   'end_time', 'all_day', 'subtasks', 'photos', 'links', 'tags', 'color', 'location',
   'estimated_minutes', 'actual_minutes', 'archived_at', 'sort_order', 'completed_at',
   'created_at', 'updated_at', 'deleted_at',
+  'recurrence_rule', 'series_id', 'occurrence_date',
 ] as const;
 const select = columns.join(', ');
 
@@ -55,12 +59,23 @@ function decode(row: TodoRow): Todo {
     links: stringList(row.links, 'links'), tags: stringList(row.tags, 'tags') };
 }
 
-export async function listTodos(db: SQLiteDatabase, archived = false) {
+export async function listTodos(db: SQLiteDatabase, archived = false, expandRecurring = true) {
   const rows = await db.getAllAsync<TodoRow>(
     `SELECT ${select} FROM tasks WHERE deleted_at IS NULL AND archived_at IS ${archived ? 'NOT NULL' : 'NULL'}
      ORDER BY due_date ASC, sort_order ASC, created_at ASC, id ASC`,
   );
-  return rows.map(decode);
+  const decoded = rows.map(decode);
+  if (archived || !expandRecurring) return decoded;
+  const today = toDateKey(new Date());
+  const repeating = (await listCalendarTodos(db, addDaysToKey(today, -30), addDaysToKey(today, 365)))
+    .filter((item) => item.repeating);
+  const replacedAnchors = new Set((await db.getAllAsync<{ series_id: string; occurrence_date: string }>(
+    'SELECT series_id, occurrence_date FROM tasks WHERE series_id IS NOT NULL',
+  )).map((item) => `${item.series_id}/${item.occurrence_date}`));
+  // Virtual IDs remain actionable through existing home completion controls.
+  return [...decoded.filter((item) => !item.recurrence_rule && !item.series_id &&
+      !replacedAnchors.has(`${item.id}/${item.due_date}`)),
+    ...repeating.map((item) => ({ ...item, id: item.virtual ? item.calendarKey : item.id }))];
 }
 
 export async function getTodo(db: SQLiteDatabase, id: string) {
@@ -77,6 +92,7 @@ function validateDate(date: string) {
 export function validateTodo(input: TodoInput) {
   if (!input.title.trim()) throw new Error('Enter a task title.');
   validateDate(input.dueDate);
+  decodeTaskRepeat(input.recurrenceRule ?? null);
   if (!['low', 'medium', 'high'].includes(input.priority) ||
       !['todo', 'in_progress', 'done'].includes(input.status ?? 'todo')) {
     throw new Error('Choose a valid priority and status.');
@@ -120,7 +136,10 @@ async function journal(db: SQLiteDatabase, label: string, before: TodoRow[], aft
   await db.runAsync('DELETE FROM task_undo WHERE id NOT IN (SELECT id FROM task_undo ORDER BY id DESC LIMIT 20)');
 }
 
-export async function saveTodo(db: SQLiteDatabase, input: TodoInput, id?: string, expectedUpdatedAt?: number) {
+export async function saveTodo(
+  db: SQLiteDatabase, input: TodoInput, id?: string, expectedUpdatedAt?: number,
+  occurrence?: { seriesId: string; date: string },
+) {
   validateTodo(input);
   const taskId = id ?? randomUUID();
   await db.withExclusiveTransactionAsync(async (tx) => {
@@ -130,6 +149,20 @@ export async function saveTodo(db: SQLiteDatabase, input: TodoInput, id?: string
     if (id && !existing) throw new Error('This task is no longer available.');
     if (existing && expectedUpdatedAt != null && existing.updated_at !== expectedUpdatedAt) {
       throw new Error('This task changed while you were editing. Reopen it to load the latest version.');
+    }
+    if (occurrence) {
+      const template = await tx.getFirstAsync<TodoRow>(`SELECT ${select} FROM tasks WHERE id = ? AND deleted_at IS NULL AND archived_at IS NULL`, occurrence.seriesId);
+      const repeat = template ? decodeTaskRepeat(template.recurrence_rule) : null;
+      if (!template || !repeat || !taskRepeatDates(template.due_date, repeat, occurrence.date, occurrence.date).length) {
+        throw new Error('This recurring task occurrence is no longer available.');
+      }
+      if (expectedUpdatedAt != null && template.updated_at !== expectedUpdatedAt) {
+        throw new Error('The recurring task changed. Reload the calendar before editing.');
+      }
+      const edited = await tx.getFirstAsync<{ id: string }>(
+        'SELECT id FROM tasks WHERE series_id = ? AND occurrence_date = ?', occurrence.seriesId, occurrence.date,
+      );
+      if (edited) throw new Error('This occurrence was already edited. Reload the calendar to use its latest version.');
     }
     const now = Math.max(Date.now(), (existing?.updated_at ?? 0) + 1);
     const allDay = input.allDay ?? !input.startTime;
@@ -146,6 +179,9 @@ export async function saveTodo(db: SQLiteDatabase, input: TodoInput, id?: string
       archived_at: existing?.archived_at ?? null, sort_order: existing?.sort_order ?? now,
       completed_at: status === 'done' ? existing?.completed_at ?? now : null,
       created_at: existing?.created_at ?? now, updated_at: now, deleted_at: null,
+      recurrence_rule: input.recurrenceRule === undefined ? existing?.recurrence_rule ?? null : input.recurrenceRule,
+      series_id: existing?.series_id ?? occurrence?.seriesId ?? null,
+      occurrence_date: existing?.occurrence_date ?? occurrence?.date ?? null,
     };
     await writeRow(tx, row);
     await journal(tx, id ? 'Edit task' : 'Create task', existing ? [existing] : [], [row]);
@@ -198,7 +234,7 @@ export async function changeTodos(db: SQLiteDatabase, ids: string[], action: Tas
 }
 
 export const setTodoDone = (db: SQLiteDatabase, id: string, done: boolean) =>
-  changeTodos(db, [id], { type: 'status', status: done ? 'done' : 'todo' });
+  setCalendarAwareDone(db, id, done);
 export const deleteTodo = (db: SQLiteDatabase, id: string) => changeTodos(db, [id], { type: 'delete' });
 
 export async function duplicateTodo(db: SQLiteDatabase, id: string) {
@@ -211,6 +247,7 @@ export async function duplicateTodo(db: SQLiteDatabase, id: string) {
     const copy: TodoRow = {
       ...original, id: copyId, title: `${original.title} (copy)`, status: 'todo', completed_at: null,
       actual_minutes: null, archived_at: null, created_at: now, updated_at: now, sort_order: now,
+      series_id: null, occurrence_date: null,
       subtasks: JSON.stringify(todo.subtasks.map((item) => ({ ...item, id: randomUUID(), done: false }))),
     };
     await writeRow(tx, copy);
@@ -262,4 +299,83 @@ export async function undoTaskAction(db: SQLiteDatabase) {
     }
     await tx.runAsync('DELETE FROM task_undo WHERE id = ?', entry.id);
   });
+}
+
+export function todoInput(todo: Todo): TodoInput {
+  return {
+    title: todo.title, priority: todo.priority, category: todo.category, dueDate: todo.due_date,
+    startTime: todo.start_time, dueTime: todo.due_time, endTime: todo.end_time, allDay: Boolean(todo.all_day),
+    notes: todo.notes, status: todo.status, subtasks: todo.subtasks, photos: todo.photos,
+    links: todo.links, tags: todo.tags, color: todo.color, location: todo.location,
+    estimatedMinutes: todo.estimated_minutes, actualMinutes: todo.actual_minutes, recurrenceRule: todo.recurrence_rule,
+  };
+}
+
+export type CalendarTodo = Todo & { calendarKey: string; virtual: boolean; repeating: boolean };
+
+export async function listCalendarTodos(
+  db: SQLiteDatabase, from: string, through: string, repeatFrom = from,
+): Promise<CalendarTodo[]> {
+  validateDate(from);
+  validateDate(through);
+  const rows = (await db.getAllAsync<TodoRow>(`SELECT ${select} FROM tasks ORDER BY due_date, sort_order, id`)).map(decode);
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const overrides = new Map(rows.filter((row) => row.series_id).map((row) => [`${row.series_id}/${row.occurrence_date}`, row]));
+  const result: CalendarTodo[] = [];
+  for (const row of rows) {
+    if (row.deleted_at != null || row.archived_at != null) continue;
+    if (row.series_id) {
+      const template = byId.get(row.series_id);
+      if (!template || template.deleted_at != null || template.archived_at != null) continue;
+      if (row.due_date >= from && row.due_date <= through) result.push({ ...row, calendarKey: row.id, virtual: false, repeating: true });
+      continue;
+    }
+    const repeat = decodeTaskRepeat(row.recurrence_rule);
+    if (!repeat) {
+      if (!overrides.has(`${row.id}/${row.due_date}`) && row.due_date >= from && row.due_date <= through) {
+        result.push({ ...row, calendarKey: row.id, virtual: false, repeating: false });
+      }
+      continue;
+    }
+    for (const date of taskRepeatDates(row.due_date, repeat, repeatFrom > from ? repeatFrom : from, through)) {
+      const key = `${row.id}/${date}`;
+      if (overrides.has(key)) continue;
+      result.push({ ...row, due_date: date, series_id: row.id, occurrence_date: date,
+        recurrence_rule: null, status: date === row.due_date ? row.status : 'todo',
+        completed_at: date === row.due_date ? row.completed_at : null,
+        actual_minutes: date === row.due_date ? row.actual_minutes : null,
+        subtasks: date === row.due_date ? row.subtasks : row.subtasks.map((item) => ({ ...item, done: false })),
+        calendarKey: key, virtual: true, repeating: true });
+    }
+  }
+  return result.sort((a, b) => a.due_date.localeCompare(b.due_date) ||
+    (a.start_time ?? a.due_time ?? '00:00').localeCompare(b.start_time ?? b.due_time ?? '00:00') ||
+    a.sort_order - b.sort_order || a.calendarKey.localeCompare(b.calendarKey));
+}
+
+export async function saveCalendarTodo(db: SQLiteDatabase, todo: CalendarTodo, patch: Partial<TodoInput>) {
+  return saveTodo(db, { ...todoInput(todo), ...patch }, todo.virtual ? undefined : todo.id, todo.updated_at,
+    todo.virtual && todo.series_id && todo.occurrence_date ? { seriesId: todo.series_id, date: todo.occurrence_date } : undefined);
+}
+
+export async function listOverdueCalendarTodos(db: SQLiteDatabase, today: string, nowTime = toTimeKey(new Date())) {
+  const oldest = await db.getFirstAsync<{ due_date: string | null }>(
+    'SELECT MIN(due_date) AS due_date FROM tasks WHERE deleted_at IS NULL AND archived_at IS NULL',
+  );
+  if (!oldest?.due_date || oldest.due_date > today) return [];
+  return (await listCalendarTodos(db, oldest.due_date, today, addDaysToKey(today, -30)))
+    .filter((task) => {
+      const deadline = task.due_time ?? task.end_time ?? task.start_time;
+      return task.status !== 'done' && (task.due_date < today ||
+        (!task.all_day && deadline !== null && deadline < nowTime));
+    });
+}
+
+async function setCalendarAwareDone(db: SQLiteDatabase, id: string, done: boolean) {
+  const separator = id.lastIndexOf('/');
+  if (separator < 0) return changeTodos(db, [id], { type: 'status', status: done ? 'done' : 'todo' });
+  const date = id.slice(separator + 1);
+  const occurrence = (await listCalendarTodos(db, date, date)).find((item) => item.calendarKey === id);
+  if (!occurrence) throw new Error('This recurring task occurrence is no longer available.');
+  return saveCalendarTodo(db, occurrence, { status: done ? 'done' : 'todo' });
 }
