@@ -28,6 +28,12 @@
       "expo-router",
       "expo-status-bar",
       "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "workout-reminders"
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-image-picker",

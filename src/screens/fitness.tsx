@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProfileButton } from '../components/profile-button';
 import { RoundButton } from '../components/round-button';
+import { WorkoutScheduler } from '../components/workout-scheduler';
 import { EXERCISES, MUSCLE_GROUPS, type MuscleGroup } from '../constants/exercises';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
@@ -37,6 +38,7 @@ export function Fitness({ session }: { session: Session }) {
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState<MuscleGroup | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'schedule' | 'history'>('schedule');
 
   const monthKey = monthKeyOf(cursor.year, cursor.month);
   const { logs, activities, error, reload } = useWorkouts(session.user.id, monthKey);
@@ -135,6 +137,30 @@ export function Fitness({ session }: { session: Session }) {
           <Ionicons name="chevron-forward" size={20} color={colors.heroTextMuted} />
         </Pressable>
 
+        <View style={styles.tabs}>
+          {(['schedule', 'history'] as const).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => setActiveTab(tab)}
+              style={[styles.tab, activeTab === tab && styles.tabSelected]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeTab === tab }}
+            >
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextSelected]}>
+                {tab === 'schedule' ? 'Schedule' : 'History & exercises'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {activeTab === 'schedule' ? (
+          <WorkoutScheduler session={session} />
+        ) : (
+          <>
+        <View style={styles.historyHeading}>
+          <Text style={styles.sectionTitle}>Workout history</Text>
+          <Text style={styles.historyMeta}>Logged workouts and activities</Text>
+        </View>
         <View style={styles.card}>
           <View style={styles.monthRow}>
             <RoundButton icon="chevron-back" label="Previous month" size={36} onPress={() => changeMonth(-1)} />
@@ -316,6 +342,8 @@ export function Fitness({ session }: { session: Session }) {
         )}
 
         {(error || actionError) && <Text style={styles.error}>{error ?? actionError}</Text>}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -360,6 +388,19 @@ const styles = StyleSheet.create({
   },
   recordTitle: { color: colors.heroText, fontSize: 16, fontWeight: '800' },
   recordMeta: { color: colors.heroTextMuted, fontSize: 12, marginTop: 2 },
+  tabs: {
+    flexDirection: 'row',
+    padding: 4,
+    marginBottom: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+  },
+  tab: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
+  tabSelected: { backgroundColor: colors.surface, elevation: 1 },
+  tabText: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
+  tabTextSelected: { color: colors.primary },
+  historyHeading: { marginTop: spacing.sm, marginBottom: spacing.md },
+  historyMeta: { color: colors.textMuted, fontSize: 13, marginTop: spacing.xs },
   activityIcon: { backgroundColor: colors.accentSoft },
   card: {
     padding: spacing.lg,

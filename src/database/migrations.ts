@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 5;
+const DATABASE_VERSION = 6;
 
 export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -126,6 +126,35 @@ export async function migrate(db: SQLiteDatabase) {
       deleted_at INTEGER
     );
     CREATE INDEX IF NOT EXISTS idx_activities_date ON activities(log_date);
+  `);
+  }
+
+  if (version < 6) {
+    await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS workout_schedules (
+      id TEXT PRIMARY KEY NOT NULL,
+      title TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'workout',
+      scheduled_date TEXT NOT NULL,
+      start_time TEXT,
+      duration_min INTEGER,
+      recurrence_days TEXT,
+      reminder_minutes INTEGER,
+      status TEXT NOT NULL DEFAULT 'scheduled',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_workout_schedules_date ON workout_schedules(scheduled_date);
+    CREATE TABLE IF NOT EXISTS workout_schedule_occurrences (
+      schedule_id TEXT NOT NULL REFERENCES workout_schedules(id),
+      original_date TEXT NOT NULL,
+      scheduled_date TEXT NOT NULL,
+      status TEXT NOT NULL,
+      PRIMARY KEY (schedule_id, original_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_workout_schedule_occurrences_date
+      ON workout_schedule_occurrences(scheduled_date);
   `);
   }
 

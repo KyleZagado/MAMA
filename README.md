@@ -3,7 +3,9 @@
 MAMA is an Expo app for iOS and Android. The current starter includes Supabase
 email/password sign-in and registration plus a sample personal-finance dashboard.
 The dashboard figures and transactions are demo content; no bank accounts or
-financial records are connected yet.
+financial records are connected yet. Fitness includes a local workout scheduler
+with day, week, and month views, recurring workouts and rest days, reminders,
+and workout history.
 
 ## Configure Supabase
 
