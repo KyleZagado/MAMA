@@ -28,6 +28,7 @@ const ACTIVITY_STYLE: Record<
   activity: { label: 'Activity', icon: 'walk-outline', color: '#208E82' },
   fast: { label: 'Fast', icon: 'hourglass-outline', color: '#7552A4' },
   five_two: { label: '5:2', icon: 'calendar-outline', color: '#7552A4' },
+  journal: { label: 'Journal', icon: 'book-outline', color: '#B35D8A' },
 };
 
 function monthKeyOf(year: number, month: number) {

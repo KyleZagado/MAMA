@@ -26,7 +26,7 @@ test('fasting migration is repeatable and persists active sessions, completions 
   try {
     await migrate(db);
     await migrate(db);
-    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 15);
+    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 16);
 
     const originalNow = Date.now;
     let now = new Date(2026, 9, 5, 8).getTime();
@@ -94,7 +94,7 @@ test('version 14 migration preserves fast history and derives its planned end ti
     assert.equal(upgraded.state, 'completed');
     assert.equal(upgraded.paused_duration_ms, 0);
     assert.equal(upgraded.planned_end_at, 1000 + 960 * 60_000);
-    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 15);
+    assert.equal((await db.getFirstAsync('PRAGMA user_version')).user_version, 16);
   } finally {
     native.close();
   }

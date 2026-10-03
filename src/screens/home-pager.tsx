@@ -21,6 +21,7 @@ import { Consumption } from './consumption';
 import { Dashboard } from './dashboard';
 import { Fasting } from './fasting';
 import { Fitness } from './fitness';
+import { Journal } from './journal';
 import { Overview } from './overview';
 import { Todos } from './todos';
 
@@ -91,6 +92,7 @@ export function HomePager({ session }: { session: Session }) {
     ['fitness', <Fitness key="fitness" session={session} />],
     ['fasting', <Fasting key="fasting" session={session} />],
     ['overview', <Overview key="overview" session={session} isVisible={pageOrder[page] === 'overview'} />],
+    ['journal', <Journal key="journal" session={session} isVisible={pageOrder[page] === 'journal'} />],
   ]);
 
   return (

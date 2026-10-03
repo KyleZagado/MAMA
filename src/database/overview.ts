@@ -16,7 +16,8 @@ export type OverviewActivityType =
   | 'workout'
   | 'activity'
   | 'fast'
-  | 'five_two';
+  | 'five_two'
+  | 'journal';
 
 export type OverviewActivity = {
   id: string;
@@ -54,6 +55,13 @@ type FastingRow = {
   target_minutes: number | null;
 };
 
+type JournalRow = {
+  id: string;
+  entry_date: string;
+  mood: string | null;
+  created_at: number;
+};
+
 function localBounds(from: string, through: string) {
   return {
     start: fromDateKey(from).getTime(),
@@ -77,7 +85,7 @@ export async function loadOverviewCalendar(
   now = Date.now(),
 ): Promise<OverviewCalendarData> {
   const bounds = localBounds(from, through);
-  const [transactions, meals, water, workouts, activities, tasks, fasting] = await Promise.all([
+  const [transactions, meals, water, workouts, activities, tasks, fasting, journal] = await Promise.all([
     db.getAllAsync<TransactionRow>(
       `SELECT t.id, t.type, t.amount_minor, t.occurred_at, t.description, t.merchant,
               a.name AS wallet_name, a.currency AS wallet_currency
@@ -104,6 +112,13 @@ export async function loadOverviewCalendar(
       bounds.end,
       now,
       bounds.start,
+    ),
+    db.getAllAsync<JournalRow>(
+      `SELECT id, entry_date, mood, created_at
+       FROM journal_entries WHERE entry_date >= ? AND entry_date <= ?
+       ORDER BY entry_date`,
+      from,
+      through,
     ),
   ]);
 
@@ -191,6 +206,17 @@ export async function loadOverviewCalendar(
         });
       }
       return days;
+    }),
+    ...journal.map((entry) => {
+      const mood = entry.mood ? ` · ${entry.mood[0].toUpperCase()}${entry.mood.slice(1)}` : '';
+      return {
+        id: `journal:${entry.id}`,
+        type: 'journal' as const,
+        date: entry.entry_date,
+        timestamp: entry.created_at,
+        title: 'Journal entry',
+        detail: `Daily Journal${mood}`,
+      };
     }),
   ];
 

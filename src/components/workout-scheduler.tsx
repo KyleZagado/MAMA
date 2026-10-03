@@ -153,7 +153,9 @@ export function WorkoutScheduler({ session }: { session: Session }) {
           );
       setReminderWarning(
         !reminderSync.permissionGranted && hasReminders
-          ? 'Workout reminders are saved, but notifications are turned off in device settings.'
+          ? reminderSync.unavailableInExpoGo
+            ? 'Workout reminders require an Android development build and are unavailable in Expo Go.'
+            : 'Workout reminders are saved, but notifications are turned off in device settings.'
           : reminderSync.omitted > 0
             ? `Only the next 50 workout reminders are queued; ${reminderSync.omitted} additional reminders could not be scheduled.`
             : null,
@@ -354,10 +356,10 @@ export function WorkoutScheduler({ session }: { session: Session }) {
     setSaving(true);
     setError(null);
     try {
-      const mayRemind =
+      const reminderPermission =
         kind === 'workout' && reminderMinutes !== null
           ? await requestWorkoutReminderPermission()
-          : true;
+          : { granted: true, unavailableInExpoGo: false };
       await addWorkoutSchedule(await getDatabase(session.user.id), {
         title: trimmedTitle,
         kind,
@@ -365,20 +367,24 @@ export function WorkoutScheduler({ session }: { session: Session }) {
         startTime: kind === 'workout' ? formatClock(startTime) : null,
         durationMin: kind === 'workout' ? durationValue : null,
         recurrenceDays: repeatWeekly ? [...repeatDays].sort((a, b) => a - b) : null,
-        reminderMinutes: kind === 'workout' && mayRemind ? reminderMinutes : null,
+        reminderMinutes: kind === 'workout' && reminderPermission.granted ? reminderMinutes : null,
       });
       setFormVisible(false);
       setSelectedDate(toDateKey(formDate));
       setReminderWarning(
-        mayRemind
+        reminderPermission.granted
           ? null
-          : 'This workout was saved without a reminder because notifications are turned off.',
+          : reminderPermission.unavailableInExpoGo
+            ? 'Workout reminders require an Android development build and are unavailable in Expo Go.'
+            : 'This workout was saved without a reminder because notifications are turned off.',
       );
       await refreshAfterChange();
-      if (!mayRemind) {
+      if (!reminderPermission.granted) {
         Alert.alert(
           'Workout saved without a reminder',
-          'Notifications are disabled. You can enable them in your device settings and add the reminder again.',
+          reminderPermission.unavailableInExpoGo
+            ? 'Workout reminders are unavailable in Expo Go on Android. Use an Android development build to enable them.'
+            : 'Notifications are disabled. You can enable them in your device settings and add the reminder again.',
         );
       }
     } catch (e: unknown) {

@@ -4,6 +4,7 @@ const { loadSource, database } = require('./helpers/database.cjs');
 
 const { migrate } = loadSource('src/database/migrations.ts');
 const { loadOverviewCalendar } = loadSource('src/database/overview.ts');
+const { saveJournalEntry } = loadSource('src/database/journal.ts');
 const { saveTodo } = loadSource('src/database/todos.ts');
 const { addDaysToKey, fromDateKey } = loadSource('src/lib/dates.ts');
 
@@ -82,16 +83,23 @@ test('overview calendar aggregates finance, food, water, tasks, workouts, activi
       nextDay,
       nextDay,
     );
+    await saveJournalEntry(
+      db,
+      date,
+      { body: 'A good day', mood: 'good', tags: [], photos: [], favorite: false },
+      start + 12 * 60 * 60 * 1000,
+    );
 
     const overview = await loadOverviewCalendar(db, date, date, nextDay);
-    assert.equal(overview.activities.length, 7);
-    assert.equal(overview.monthCounts[date], 7);
+    assert.equal(overview.activities.length, 8);
+    assert.equal(overview.monthCounts[date], 8);
     assert.deepEqual(
       [...new Set(overview.activities.map((item) => item.type))].sort(),
-      ['activity', 'expense', 'fast', 'meal', 'task', 'water', 'workout'],
+      ['activity', 'expense', 'fast', 'journal', 'meal', 'task', 'water', 'workout'],
     );
     assert.ok(overview.activities.some((item) => item.title === 'Lunch' && item.detail.includes('Cash')));
     assert.ok(overview.activities.some((item) => item.title === 'Plan week'));
+    assert.ok(overview.activities.some((item) => item.title === 'Journal entry' && item.detail.includes('Good')));
     assert.equal(overview.monthCounts[addDaysToKey(date, 1)], undefined);
   } finally {
     Date.now = originalNow;

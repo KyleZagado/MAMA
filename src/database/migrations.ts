@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 15;
+const DATABASE_VERSION = 16;
 
 export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -348,6 +348,35 @@ export async function migrate(db: SQLiteDatabase) {
     migration.push('PRAGMA user_version = 15');
     await db.withTransactionAsync(async () => {
       await db.execAsync(migration.join(';'));
+    });
+  }
+
+  if (version < 16) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS journal_entries (
+          id TEXT PRIMARY KEY NOT NULL,
+          entry_date TEXT NOT NULL UNIQUE,
+          body TEXT NOT NULL DEFAULT '',
+          mood TEXT CHECK (mood IN ('great', 'good', 'okay', 'sad', 'angry')),
+          tags TEXT NOT NULL DEFAULT '[]',
+          photos TEXT NOT NULL DEFAULT '[]',
+          favorite INTEGER NOT NULL DEFAULT 0 CHECK (favorite IN (0, 1)),
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_journal_entries_date
+          ON journal_entries(entry_date DESC);
+        CREATE INDEX IF NOT EXISTS idx_journal_entries_favorite
+          ON journal_entries(favorite, entry_date DESC);
+        CREATE TABLE IF NOT EXISTS journal_preferences (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          reminder_enabled INTEGER NOT NULL DEFAULT 0 CHECK (reminder_enabled IN (0, 1)),
+          reminder_time TEXT NOT NULL DEFAULT '20:00'
+        );
+        INSERT OR IGNORE INTO journal_preferences (id) VALUES (1);
+        PRAGMA user_version = 16;
+      `);
     });
   }
 

@@ -13,6 +13,7 @@ test('home page order normalization retains valid unique pages and appends new p
     'todos',
     'finance',
     'consumption',
+    'journal',
   ]);
   assert.deepEqual(normalizeHomePageOrder(null), DEFAULT_HOME_PAGE_ORDER);
   assert.deepEqual(DEFAULT_HOME_PAGE_ORDER, [
@@ -22,6 +23,7 @@ test('home page order normalization retains valid unique pages and appends new p
     'consumption',
     'fitness',
     'fasting',
+    'journal',
   ]);
 });
 
@@ -34,6 +36,7 @@ test('moving home pages supports arbitrary positions and boundaries', () => {
     'fitness',
     'finance',
     'fasting',
+    'journal',
   ]);
   assert.deepEqual(moveHomePage(order, 'fasting', 0), [
     'fasting',
@@ -42,6 +45,7 @@ test('moving home pages supports arbitrary positions and boundaries', () => {
     'finance',
     'consumption',
     'fitness',
+    'journal',
   ]);
   assert.deepEqual(moveHomePage(order, 'finance', 2), order);
   assert.deepEqual(moveHomePage(order, 'finance', 99), [
@@ -50,6 +54,7 @@ test('moving home pages supports arbitrary positions and boundaries', () => {
     'consumption',
     'fitness',
     'fasting',
+    'journal',
     'finance',
   ]);
 });

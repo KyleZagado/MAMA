@@ -7,7 +7,7 @@ records, budgets, bills, and fitness schedules are stored locally on each
 signed-in user's device. Fitness includes a workout scheduler with day, week,
 and month views, recurring workouts and rest days, reminders, and workout history.
 The home carousel also includes a fasting tracker with timed protocols, custom
-fast durations, session history, and a separate 5:2 weekly check-in.
+fast durations, session history, a separate 5:2 weekly check-in, and a daily journal.
 
 ## Fasting tracker
 
@@ -31,8 +31,22 @@ and phase estimates are informational and do not provide medical guidance.
 Use **Profile → Home page sequence** to move any main page earlier or later,
 send it directly to the first or last position, or restore the default order.
 The default and reset order is Overview Tracker, To-do list, Wallets & finance,
-Food and water, Fitness, then Fasting Tracker. The setting is saved per
-signed-in user on the device.
+Food and water, Fitness, Fasting Tracker, then Daily Journal. The setting is
+saved per signed-in user on the device.
+
+## Daily journal
+
+Swipe to **Daily Journal** to write one entry per day. Entries auto-save while
+you type, with their date and creation/update times recorded automatically.
+Use the calendar to open or create an entry for any day; marked dates contain
+saved entries. The journal supports one mood per entry (Great, Good, Okay, Sad,
+or Angry), tags, favorites, and up to five photos, including photo-only entries.
+Search words or phrases and combine mood, tag, date, and Favorites filters.
+The streak counts consecutive days ending today, or yesterday if today has not
+been journaled yet. A daily reminder can be enabled and assigned a time in the
+journal page; notification permission is required. Android Expo Go does not
+support this app's reminder setup, so use an Android development build for
+reminders there.
 
 ## Dark mode
 
@@ -43,7 +57,8 @@ sign-in screens, and the status bar.
 ## Overview tracker
 
 Swipe to **Overview Tracker** for a monthly calendar combining activity from
-Wallets & finance, To-do list, Food and water, Fitness, and Fasting Tracker.
+Wallets & finance, To-do list, Food and water, Fitness, Fasting Tracker, and
+Daily Journal.
 Days with logged activity are marked in the calendar. Select a date to see its
 transactions, scheduled tasks (including recurring occurrences), meals, water
 entries, workouts, recorded activities, and fasting sessions. The calendar also
@@ -210,7 +225,7 @@ individual recurring dates rather than bulk-completing a repeat template.
 3. Copy `.env.example` to `.env` and set `EXPO_PUBLIC_SUPABASE_URL` and
    `EXPO_PUBLIC_SUPABASE_ANON_KEY` to your project's URL and anon/publishable
    key.
-4. Start the app with `npx expo start`.
+4. Start the app using the instructions below.
 
 The anon/publishable key is intended for client apps. Never put a Supabase
 service-role key in the app. Before storing financial records, enable
@@ -219,13 +234,36 @@ Row-Level Security and add policies that restrict every record to its owner.
 For EAS builds, add the same two `EXPO_PUBLIC_` variables to the EAS
 environment used by the build. Do not commit `.env` or credentials.
 
+## Run on an Android emulator
+
+1. Install [Android Studio](https://developer.android.com/studio) and complete
+   its setup wizard so the Android SDK and Android Emulator are installed.
+2. In Android Studio, open **Device Manager**, create a virtual device (for
+   example, a Pixel), and start it.
+3. From the project directory, run:
+
+   ```sh
+   npm run android
+   ```
+
+This starts Expo and opens the app on the running emulator. To start Expo
+without automatically opening Android, run `npx expo start` and press `a` in
+the terminal. If the emulator is not detected, check that it is running and
+that `adb devices` lists it. See Expo's
+[Android Studio Emulator guide](https://docs.expo.dev/workflow/android-studio-emulator/)
+for Android SDK setup and troubleshooting.
+
+Workout reminders are unavailable when running Android in Expo Go. Use an
+[Android development build](https://docs.expo.dev/develop/development-builds/introduction/)
+to enable reminders; other app features work in Expo Go.
+
 ## Checks
 
 ```sh
 npm run lint
 npx tsc --noEmit
 npx expo-doctor
-node --test tests/finance.test.cjs tests/tasks.test.cjs tests/calendar.test.cjs tests/task-organization.test.cjs
+node --test tests/*.test.cjs
 ```
 
 The finance regression tests use Node's built-in SQLite module (Node 22.13+

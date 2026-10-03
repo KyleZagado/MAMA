@@ -1,4 +1,4 @@
-import * as Notifications from 'expo-notifications';
+import { isRunningInExpoGo } from 'expo';
 import { Platform } from 'react-native';
 
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -9,12 +9,26 @@ import { addDaysToKey, fromDateKey, toDateKey } from './dates';
 const CHANNEL_ID = 'workout-reminders';
 const MAX_PENDING_WORKOUT_REMINDERS = 50;
 
+type NotificationsModule = typeof import('expo-notifications');
+
 export type WorkoutReminderSyncResult = {
   permissionGranted: boolean;
   omitted: number;
+  unavailableInExpoGo: boolean;
 };
 
-async function prepareAndroidChannel() {
+function isAndroidExpoGo() {
+  return Platform.OS === 'android' && isRunningInExpoGo();
+}
+
+let notificationsModule: Promise<NotificationsModule> | null = null;
+
+function loadNotifications() {
+  notificationsModule ??= import('expo-notifications');
+  return notificationsModule;
+}
+
+async function prepareAndroidChannel(Notifications: NotificationsModule) {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
       name: 'Workout reminders',
@@ -24,22 +38,32 @@ async function prepareAndroidChannel() {
 }
 
 export async function requestWorkoutReminderPermission() {
-  await prepareAndroidChannel();
+  if (isAndroidExpoGo()) {
+    return { granted: false, unavailableInExpoGo: true };
+  }
 
+  const Notifications = await loadNotifications();
+  await prepareAndroidChannel(Notifications);
   const current = await Notifications.getPermissionsAsync();
   const permission =
     current.granted || current.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
       ? current
       : await Notifications.requestPermissionsAsync();
-  return (
-    permission.granted ||
-    permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
-  );
+  return {
+    granted:
+      permission.granted ||
+      permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL,
+    unavailableInExpoGo: false,
+  };
 }
 
 export async function syncWorkoutReminders(db: SQLiteDatabase) {
-  await prepareAndroidChannel();
+  if (isAndroidExpoGo()) {
+    return { permissionGranted: false, omitted: 0, unavailableInExpoGo: true };
+  }
 
+  const Notifications = await loadNotifications();
+  await prepareAndroidChannel(Notifications);
   const existing = await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
     existing
@@ -51,7 +75,9 @@ export async function syncWorkoutReminders(db: SQLiteDatabase) {
   const permissionGranted =
     permission.granted ||
     permission.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
-  if (!permissionGranted) return { permissionGranted: false, omitted: 0 };
+  if (!permissionGranted) {
+    return { permissionGranted: false, omitted: 0, unavailableInExpoGo: false };
+  }
 
   const today = toDateKey(new Date());
   const through = addDaysToKey(today, 90);
@@ -94,5 +120,9 @@ export async function syncWorkoutReminders(db: SQLiteDatabase) {
       }),
     ),
   );
-  return { permissionGranted: true, omitted: allReminders.length - reminders.length };
+  return {
+    permissionGranted: true,
+    omitted: allReminders.length - reminders.length,
+    unavailableInExpoGo: false,
+  };
 }

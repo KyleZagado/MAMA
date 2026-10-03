@@ -5,6 +5,7 @@ export const HOME_PAGES = [
   { id: 'consumption', label: 'Food and water' },
   { id: 'fitness', label: 'Fitness' },
   { id: 'fasting', label: 'Fasting Tracker' },
+  { id: 'journal', label: 'Daily Journal' },
 ] as const;
 
 export type HomePageId = (typeof HOME_PAGES)[number]['id'];

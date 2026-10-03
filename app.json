@@ -38,8 +38,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "MAMA accesses your photos so you can choose a profile picture, meal photo, receipt or task attachment.",
-          "cameraPermission": "MAMA uses your camera so you can photograph meals, receipts and task attachments.",
+          "photosPermission": "MAMA accesses your photos so you can choose a profile picture, journal memory, meal photo, receipt or task attachment.",
+          "cameraPermission": "MAMA uses your camera so you can photograph journal memories, meals, receipts and task attachments.",
           "microphonePermission": false
         }
       ],
