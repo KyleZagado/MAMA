@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProfileButton } from '../components/profile-button';
 import { PickerField } from '../components/picker-field';
-import { darkColors, lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
+import { darkColors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import {
   deleteJournalEntry,
   draftFromEntry,
@@ -43,14 +44,28 @@ import {
   requestJournalReminderPermission,
   syncJournalReminder,
 } from '../lib/journal-reminders';
-import { createThemedStyleSheet } from '../providers/theme-provider';
+import { createThemedStyleSheet, useTheme } from '../providers/theme-provider';
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const SUGGESTED_TAGS = ['Work', 'Family', 'Travel', 'Goals'];
-const NOTEBOOK_LINE_HEIGHT = 30;
-const SPIRAL_RINGS = 12;
-const HANDWRITING_FONT = Platform.select({ ios: 'Noteworthy', android: 'serif', default: 'Georgia, serif' });
-const SERIF_FONT = Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' });
+
+// Apple Notes-inspired palette: grouped gray background, white/black sheets, yellow tint.
+function notesPalette(isDark: boolean) {
+  return {
+    background: isDark ? '#000000' : '#F2F2F7',
+    sheet: isDark ? '#1C1C1E' : '#FFFFFF',
+    fill: isDark ? 'rgba(118, 118, 128, 0.24)' : 'rgba(118, 118, 128, 0.12)',
+    separator: isDark ? '#38383A' : '#C6C6C8',
+    label: isDark ? '#FFFFFF' : '#000000',
+    secondary: isDark ? 'rgba(235, 235, 245, 0.6)' : 'rgba(60, 60, 67, 0.6)',
+    tertiary: isDark ? 'rgba(235, 235, 245, 0.3)' : 'rgba(60, 60, 67, 0.3)',
+    accent: isDark ? '#FFD60A' : '#E0A800',
+    accentSoft: isDark ? 'rgba(255, 214, 10, 0.18)' : 'rgba(255, 204, 0, 0.18)',
+    onAccent: '#000000',
+    switchOn: isDark ? '#30D158' : '#34C759',
+    danger: isDark ? '#FF453A' : '#FF3B30',
+  };
+}
 
 function monthRange(year: number, month: number) {
   const start = new Date(year, month, 1);
@@ -103,6 +118,7 @@ function moodLabel(mood: JournalMood | null) {
 }
 
 export function Journal({ session, isVisible = true }: { session: Session; isVisible?: boolean }) {
+  const notes = notesPalette(useTheme().mode === 'dark');
   const today = toDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const selectedDateRef = useRef(today);
@@ -125,7 +141,6 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
   const [saveStatus, setSaveStatus] = useState('Changes save automatically');
   const [error, setError] = useState<string | null>(null);
   const [tagText, setTagText] = useState('');
-  const [paperHeight, setPaperHeight] = useState(NOTEBOOK_LINE_HEIGHT * 8);
   const [query, setQuery] = useState('');
   const [moodFilter, setMoodFilter] = useState<JournalMood | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
@@ -526,27 +541,27 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
         >
           <View style={styles.header}>
             <View>
-              <Text style={styles.brand}>mama · my notebook</Text>
-              <Text style={styles.title}>Daily Journal</Text>
+              <Text style={styles.brand}>mama</Text>
+              <Text style={styles.title}>Journal</Text>
             </View>
             <ProfileButton session={session} />
           </View>
 
           <View style={styles.filtersCard}>
             <View style={styles.searchBox}>
-              <Ionicons name="search-outline" size={19} color={colors.textSubtle} />
+              <Ionicons name="search" size={17} color={notes.secondary} />
               <TextInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Search words or phrases"
-                placeholderTextColor={colors.textSubtle}
+                placeholder="Search"
+                placeholderTextColor={notes.secondary}
                 style={styles.searchInput}
                 returnKeyType="search"
                 accessibilityLabel="Search journal entries"
               />
               {query.length > 0 && (
                 <Pressable onPress={() => setQuery('')} accessibilityLabel="Clear search">
-                  <Ionicons name="close-circle" size={19} color={colors.textSubtle} />
+                  <Ionicons name="close-circle" size={17} color={notes.secondary} />
                 </Pressable>
               )}
             </View>
@@ -609,7 +624,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                 accessibilityRole="button"
                 accessibilityLabel="Previous month"
               >
-                <Ionicons name="chevron-back" size={20} color={colors.text} />
+                <Ionicons name="chevron-back" size={22} color={notes.accent} />
               </Pressable>
               <Text style={styles.monthTitle}>{monthLabel(cursor.year, cursor.month)}</Text>
               <Pressable
@@ -618,7 +633,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                 accessibilityRole="button"
                 accessibilityLabel="Next month"
               >
-                <Ionicons name="chevron-forward" size={20} color={colors.text} />
+                <Ionicons name="chevron-forward" size={22} color={notes.accent} />
               </Pressable>
             </View>
             <View style={styles.calendarGrid}>
@@ -671,7 +686,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
             <View style={styles.legend}>
               <View style={styles.entryDotActive} />
               <Text style={styles.legendText}>Journal entry</Text>
-              {isLoading && <ActivityIndicator size="small" color={colors.primary} />}
+              {isLoading && <ActivityIndicator size="small" color={notes.accent} />}
             </View>
           </View>
 
@@ -707,10 +722,10 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                       </Text>
                     </View>
                     {item.photos.length > 0 && (
-                      <Ionicons name="images-outline" size={18} color={colors.primary} />
+                      <Ionicons name="images-outline" size={18} color={notes.secondary} />
                     )}
                     {item.favorite === 1 && (
-                      <Ionicons name="star" size={17} color={colors.warning} />
+                      <Ionicons name="star" size={17} color={notes.accent} />
                     )}
                   </Pressable>
                 ))
@@ -721,22 +736,10 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
           )}
 
           <View style={styles.entryCard}>
-            <View style={styles.spiralRow} pointerEvents="none">
-              {Array.from({ length: SPIRAL_RINGS }, (_, index) => (
-                <View key={index} style={styles.spiralRing}>
-                  <View style={styles.spiralHole} />
-                </View>
-              ))}
-            </View>
-            <View style={styles.marginLine} pointerEvents="none" />
-            <View style={styles.entryHeading}>
-              <View style={styles.flex}>
-                <Text style={styles.entryDate}>{dateLabel(selectedDateKey)}</Text>
-                <Text style={styles.entrySubheading}>
-                  {selectedEntry
-                    ? `Created ${timestampLabel(selectedEntry.created_at)}`
-                    : `Entry date · ${currentDate.toLocaleDateString()}`}
-                </Text>
+            <View style={styles.noteToolbar}>
+              <View style={styles.toolbarLeft}>
+                <Ionicons name="folder-outline" size={18} color={notes.accent} />
+                <Text style={styles.toolbarText}>Journal</Text>
               </View>
               <Pressable
                 onPress={() => updateDraft({ favorite: !draft.favorite })}
@@ -749,7 +752,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                 <Ionicons
                   name={draft.favorite ? 'star' : 'star-outline'}
                   size={22}
-                  color={draft.favorite ? colors.warning : colors.textMuted}
+                  color={notes.accent}
                 />
               </Pressable>
               {selectedEntry && (
@@ -760,11 +763,43 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                   accessibilityRole="button"
                   accessibilityLabel="Delete journal entry"
                 >
-                  <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                  <Ionicons name="trash-outline" size={20} color={notes.accent} />
                 </Pressable>
               )}
+              <Pressable
+                onPress={() => Keyboard.dismiss()}
+                style={styles.doneButton}
+                accessibilityRole="button"
+                accessibilityLabel="Done editing"
+              >
+                <Text style={styles.doneText}>Done</Text>
+              </Pressable>
             </View>
 
+            <Text style={styles.entrySubheading}>
+              {selectedEntry
+                ? timestampLabel(selectedEntry.updated_at)
+                : currentDate.toLocaleDateString(undefined, { dateStyle: 'long' })}
+            </Text>
+            <Text style={styles.entryDate}>{dateLabel(selectedDateKey)}</Text>
+            <TextInput
+              value={draft.body}
+              onChangeText={(body) => updateDraft({ body })}
+              editable={canEditEntry}
+              placeholder="Start writing…"
+              placeholderTextColor={notes.tertiary}
+              selectionColor={notes.accent}
+              cursorColor={notes.accent}
+              style={styles.journalInput}
+              multiline
+              scrollEnabled={false}
+              textAlignVertical="top"
+              maxLength={10000}
+              accessibilityLabel="Journal entry"
+            />
+            <Text style={styles.saveStatus}>{saveStatus}</Text>
+
+            <View style={styles.separator} />
             <Text style={styles.label}>How are you feeling?</Text>
             <View style={styles.moodGrid}>
               {JOURNAL_MOODS.map((mood) => (
@@ -785,33 +820,6 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
               ))}
             </View>
 
-            <Text style={styles.label}>Dear diary,</Text>
-            <View
-              style={styles.ruledPaper}
-              onLayout={(event) => setPaperHeight(event.nativeEvent.layout.height)}
-            >
-              {Array.from({ length: Math.max(1, Math.floor(paperHeight / NOTEBOOK_LINE_HEIGHT)) }, (_, index) => (
-                <View
-                  key={index}
-                  pointerEvents="none"
-                  style={[styles.ruledLine, { top: (index + 1) * NOTEBOOK_LINE_HEIGHT }]}
-                />
-              ))}
-              <TextInput
-                value={draft.body}
-                onChangeText={(body) => updateDraft({ body })}
-                editable={canEditEntry}
-                placeholder="What would you like to remember about today?"
-                placeholderTextColor={colors.textSubtle}
-                style={styles.journalInput}
-                multiline
-                scrollEnabled={false}
-                textAlignVertical="top"
-                maxLength={10000}
-                accessibilityLabel="Journal entry"
-              />
-            </View>
-            <Text style={styles.saveStatus}>{saveStatus}</Text>
 
             <View style={styles.sectionHeadingRow}>
               <Text style={styles.label}>Tags</Text>
@@ -824,7 +832,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                 onSubmitEditing={() => addTag(tagText)}
                 editable={canEditEntry}
                 placeholder="Add a tag"
-                placeholderTextColor={colors.textSubtle}
+                placeholderTextColor={notes.tertiary}
                 style={styles.tagInput}
                 returnKeyType="done"
                 maxLength={24}
@@ -837,7 +845,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                 accessibilityRole="button"
                 accessibilityLabel="Add tag"
               >
-                <Ionicons name="add" size={22} color={colors.onPrimary} />
+                <Ionicons name="add" size={22} color={notes.onAccent} />
               </Pressable>
             </View>
             <View style={styles.tagsWrap}>
@@ -898,7 +906,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                   accessibilityRole="button"
                   accessibilityLabel="Add photos"
                 >
-                  <Ionicons name="camera-outline" size={24} color={colors.primary} />
+                  <Ionicons name="camera-outline" size={24} color={notes.accent} />
                   <Text style={styles.addPhotoText}>Add photo</Text>
                 </Pressable>
               )}
@@ -907,14 +915,14 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
               <Text style={styles.photoOnlyHint}>Photo-only memories are saved automatically.</Text>
             )}
             {selectedEntry && (
-              <Text style={styles.updatedAt}>Last updated {timestampLabel(selectedEntry.updated_at)}</Text>
+              <Text style={styles.updatedAt}>Created {timestampLabel(selectedEntry.created_at)}</Text>
             )}
           </View>
 
           <View style={styles.reminderCard}>
             <View style={styles.reminderTopRow}>
               <View style={styles.reminderIcon}>
-                <Ionicons name="notifications-outline" size={21} color={colors.primary} />
+                <Ionicons name="notifications" size={18} color={notes.onAccent} />
               </View>
               <View style={styles.flex}>
                 <Text style={styles.sectionTitle}>Daily reminder</Text>
@@ -924,8 +932,8 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                 value={reminderEnabled}
                 onValueChange={(enabled) => void toggleReminder(enabled)}
                 disabled={isSavingReminder}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.surface}
+                trackColor={{ false: notes.fill, true: notes.switchOn }}
+                thumbColor="#FFFFFF"
                 accessibilityLabel="Enable daily journal reminder"
               />
             </View>
@@ -1007,166 +1015,91 @@ function TagButton({
 }
 
 const styles = createThemedStyleSheet((colors) => {
-  const isDark = colors === darkColors;
-  const paper = {
-    page: isDark ? '#1E1C18' : '#FFFBEF',
-    edge: isDark ? '#34302A' : '#E8DDC3',
-    rule: isDark ? 'rgba(125, 160, 205, 0.22)' : '#CFE0EE',
-    margin: isDark ? 'rgba(235, 120, 120, 0.45)' : '#EBA9A9',
-    ink: isDark ? '#EDE6D6' : '#26365A',
-    pencil: isDark ? '#A79F8F' : '#7B7466',
-    ring: isDark ? '#8C8F96' : '#A3A7AF',
-    hole: isDark ? '#0E1512' : '#F6F8F7',
-  };
-  const paperCard = {
-    backgroundColor: paper.page,
-    borderWidth: 1,
-    borderColor: paper.edge,
-    borderRadius: radius.md,
-    shadowColor: '#000',
-    shadowOpacity: isDark ? 0.3 : 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  } as const;
+  const notes = notesPalette(colors === darkColors);
+  const group = { backgroundColor: notes.sheet, borderRadius: 12 } as const;
   return StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
+  safeArea: { flex: 1, backgroundColor: notes.background },
   flex: { flex: 1 },
   content: {
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: spacing.md,
     paddingBottom: 64,
     gap: spacing.md,
   },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic', fontFamily: SERIF_FONT },
-  title: { color: colors.text, fontSize: 28, fontWeight: '700', fontFamily: SERIF_FONT, marginTop: 2 },
-  filtersCard: { ...paperCard, gap: spacing.sm, padding: spacing.md },
+  brand: { color: notes.secondary, fontSize: 13 },
+  title: { color: notes.label, fontSize: 34, fontWeight: '700', letterSpacing: 0.4, marginTop: 2 },
+  filtersCard: { gap: spacing.sm },
   searchBox: {
-    minHeight: 44,
+    minHeight: 38,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 1.5,
-    borderBottomColor: paper.rule,
+    gap: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: notes.fill,
   },
-  searchInput: { flex: 1, color: paper.ink, fontSize: 15, fontFamily: SERIF_FONT, paddingVertical: 8 },
+  searchInput: { flex: 1, color: notes.label, fontSize: 17, paddingVertical: 7 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   filterScroll: { gap: spacing.xs, paddingVertical: 2 },
   filterButton: {
-    minHeight: 34,
+    minHeight: 32,
     justifyContent: 'center',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 12,
     borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: notes.fill,
   },
-  filterButtonSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
-  filterButtonText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
-  filterButtonTextSelected: { color: colors.primary },
-  calendarCard: { ...paperCard, padding: spacing.md },
+  filterButtonSelected: { backgroundColor: notes.accentSoft },
+  filterButtonText: { color: notes.label, fontSize: 13, fontWeight: '500' },
+  filterButtonTextSelected: { color: notes.accent, fontWeight: '600' },
+  calendarCard: { ...group, padding: spacing.md },
   monthHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  monthButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-  },
-  monthTitle: { color: paper.ink, fontSize: 19, fontWeight: '700', fontFamily: SERIF_FONT },
+  monthButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  monthTitle: { color: notes.label, fontSize: 17, fontWeight: '600' },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  weekday: { width: '14.2857%', height: 30, textAlign: 'center', textAlignVertical: 'center', color: colors.textMuted, fontSize: 11, fontWeight: '700' },
-  dayCell: { width: '14.2857%', padding: 2 },
-  day: {
-    minHeight: 47,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  today: { borderColor: colors.primary },
-  selectedDay: { backgroundColor: colors.primarySoft },
-  dayNumber: { color: colors.text, fontSize: 13, fontWeight: '600' },
-  outsideMonthNumber: { color: colors.textSubtle },
-  selectedDayNumber: { color: colors.primary, fontWeight: '800' },
-  entryDot: { width: 5, height: 5, marginTop: 3, borderRadius: 3, backgroundColor: 'transparent' },
-  entryDotActive: { width: 6, height: 6, borderRadius: 4, backgroundColor: colors.accent },
-  entryDotSelected: { backgroundColor: colors.primary },
+  weekday: { width: '14.2857%', height: 28, textAlign: 'center', textAlignVertical: 'center', color: notes.tertiary, fontSize: 12, fontWeight: '600' },
+  dayCell: { width: '14.2857%', padding: 2, alignItems: 'center' },
+  day: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21 },
+  today: {},
+  selectedDay: { backgroundColor: notes.accent },
+  dayNumber: { color: notes.label, fontSize: 16 },
+  outsideMonthNumber: { color: notes.tertiary },
+  selectedDayNumber: { color: notes.onAccent, fontWeight: '600' },
+  entryDot: { width: 5, height: 5, marginTop: 2, borderRadius: 3, backgroundColor: 'transparent' },
+  entryDotActive: { width: 5, height: 5, borderRadius: 3, backgroundColor: notes.accent },
+  entryDotSelected: { backgroundColor: notes.onAccent },
   legend: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm, minHeight: 20 },
-  legendText: { flex: 1, color: colors.textSubtle, fontSize: 11 },
-  resultsCard: { ...paperCard, gap: spacing.sm, padding: spacing.md },
-  sectionTitle: { color: paper.ink, fontSize: 17, fontWeight: '700', fontFamily: SERIF_FONT },
+  legendText: { flex: 1, color: notes.secondary, fontSize: 12 },
+  resultsCard: { ...group, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  sectionTitle: { color: notes.label, fontSize: 17, fontWeight: '600' },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: paper.rule,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: notes.separator,
   },
-  resultDate: { width: 38, alignItems: 'center', paddingVertical: 4, borderRadius: radius.sm, backgroundColor: colors.primarySoft },
-  resultDateDay: { color: colors.primary, fontSize: 15, fontWeight: '800' },
-  resultDateMonth: { color: colors.primary, fontSize: 10, fontWeight: '600' },
-  resultTitle: { color: paper.ink, fontSize: 14, fontFamily: HANDWRITING_FONT },
-  resultMeta: { color: colors.textMuted, fontSize: 11, marginTop: 3 },
-  emptyText: { color: colors.textMuted, fontSize: 13, paddingVertical: spacing.sm },
-  entryCard: {
-    ...paperCard,
-    gap: spacing.md,
-    paddingTop: 34,
-    paddingBottom: spacing.lg,
-    paddingLeft: 44,
-    paddingRight: spacing.md,
-    marginTop: 10,
-    overflow: 'visible',
-  },
-  spiralRow: {
-    position: 'absolute',
-    top: -10,
-    left: spacing.md,
-    right: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  spiralRing: {
-    width: 10,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 3,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: paper.ring,
-    backgroundColor: 'transparent',
-  },
-  spiralHole: { width: 6, height: 6, borderRadius: 3, backgroundColor: paper.hole },
-  marginLine: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 34,
-    width: 1.5,
-    backgroundColor: paper.margin,
-  },
-  entryHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1.5,
-    borderBottomColor: paper.margin,
-  },
-  entryDate: { color: paper.ink, fontSize: 20, fontWeight: '700', fontFamily: SERIF_FONT },
-  entrySubheading: { color: paper.pencil, fontSize: 11, fontStyle: 'italic', fontFamily: SERIF_FONT, marginTop: 4 },
+  resultDate: { width: 38, alignItems: 'center' },
+  resultDateDay: { color: notes.label, fontSize: 17, fontWeight: '600' },
+  resultDateMonth: { color: notes.secondary, fontSize: 11 },
+  resultTitle: { color: notes.label, fontSize: 16, fontWeight: '600' },
+  resultMeta: { color: notes.secondary, fontSize: 14, marginTop: 2 },
+  emptyText: { color: notes.secondary, fontSize: 15, paddingVertical: spacing.sm },
+  entryCard: { ...group, gap: spacing.md, paddingHorizontal: 18, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  noteToolbar: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  toolbarLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  toolbarText: { color: notes.accent, fontSize: 17 },
+  doneButton: { minHeight: 40, justifyContent: 'center', paddingLeft: spacing.xs },
+  doneText: { color: notes.accent, fontSize: 17, fontWeight: '600' },
+  entrySubheading: { color: notes.secondary, fontSize: 13, textAlign: 'center' },
+  entryDate: { color: notes.label, fontSize: 28, fontWeight: '700', marginBottom: -spacing.sm },
   favoriteButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   deleteButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  label: { color: paper.pencil, fontSize: 15, fontStyle: 'italic', fontFamily: SERIF_FONT },
+  label: { color: notes.secondary, fontSize: 13, fontWeight: '600', textTransform: 'uppercase' },
   moodGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.xs },
   moodButton: {
     flex: 1,
@@ -1174,67 +1107,56 @@ const styles = createThemedStyleSheet((colors) => {
     alignItems: 'center',
     gap: 4,
     paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: paper.edge,
+    borderRadius: 10,
+    backgroundColor: notes.fill,
   },
-  moodButtonSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
-  moodEmoji: { fontSize: 23 },
-  moodLabel: { color: paper.pencil, fontSize: 11, fontFamily: SERIF_FONT },
-  moodLabelSelected: { color: colors.primary },
-  ruledPaper: { position: 'relative', minHeight: NOTEBOOK_LINE_HEIGHT * 8 },
-  ruledLine: { position: 'absolute', left: -44, right: -spacing.md, height: 1, backgroundColor: paper.rule },
+  moodButtonSelected: { backgroundColor: notes.accentSoft },
+  moodEmoji: { fontSize: 24 },
+  moodLabel: { color: notes.secondary, fontSize: 11, fontWeight: '500' },
+  moodLabelSelected: { color: notes.accent, fontWeight: '700' },
   journalInput: {
-    minHeight: NOTEBOOK_LINE_HEIGHT * 8,
-    margin: 0,
-    paddingTop: 5,
-    paddingBottom: 0,
-    paddingHorizontal: 0,
-    backgroundColor: 'transparent',
-    color: paper.ink,
+    minHeight: 220,
+    padding: 0,
+    color: notes.label,
     fontSize: 17,
-    lineHeight: NOTEBOOK_LINE_HEIGHT,
-    fontFamily: HANDWRITING_FONT,
-    includeFontPadding: false,
+    lineHeight: 24,
   },
-  saveStatus: { alignSelf: 'flex-end', color: paper.pencil, fontSize: 11, fontStyle: 'italic', fontFamily: SERIF_FONT, marginTop: -spacing.sm },
+  saveStatus: { alignSelf: 'flex-end', color: notes.tertiary, fontSize: 12, marginTop: -spacing.sm },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: notes.separator },
   sectionHeadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  photoCount: { color: colors.textSubtle, fontSize: 11 },
+  photoCount: { color: notes.secondary, fontSize: 13 },
   tagAddRow: { flexDirection: 'row', gap: spacing.sm },
   tagInput: {
     flex: 1,
-    minHeight: 42,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 1.5,
-    borderBottomColor: paper.rule,
-    color: paper.ink,
-    fontFamily: HANDWRITING_FONT,
-    fontSize: 15,
+    minHeight: 38,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: notes.fill,
+    color: notes.label,
+    fontSize: 16,
   },
-  addButton: { width: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.primary },
+  addButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: notes.accent },
   tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  tagChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border },
-  tagChipSelected: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
-  tagText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
-  tagTextSelected: { color: colors.primary },
+  tagChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: notes.fill },
+  tagChipSelected: { backgroundColor: notes.accentSoft },
+  tagText: { color: notes.secondary, fontSize: 14, fontWeight: '500' },
+  tagTextSelected: { color: notes.accent, fontWeight: '600' },
   photoRow: { gap: spacing.sm, paddingVertical: 2 },
-  photoFrame: { width: 96, height: 96, borderRadius: radius.md, overflow: 'hidden', position: 'relative' },
+  photoFrame: { width: 96, height: 96, borderRadius: 10, overflow: 'hidden', position: 'relative' },
   photo: { width: '100%', height: '100%' },
   removePhoto: { position: 'absolute', top: 4, right: 4, width: 24, height: 24, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: 'rgba(0,0,0,0.65)' },
-  addPhoto: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  addPhotoText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
-  photoOnlyHint: { color: colors.textSubtle, fontSize: 11 },
-  updatedAt: { color: colors.textSubtle, fontSize: 10, textAlign: 'right' },
-  reminderCard: { ...paperCard, gap: spacing.md, padding: spacing.lg },
+  addPhoto: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 10, backgroundColor: notes.fill },
+  addPhotoText: { color: notes.accent, fontSize: 12, fontWeight: '600' },
+  photoOnlyHint: { color: notes.secondary, fontSize: 12 },
+  updatedAt: { color: notes.tertiary, fontSize: 12, textAlign: 'center' },
+  reminderCard: { ...group, gap: spacing.md, padding: spacing.md },
   reminderTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  reminderIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.primarySoft },
-  reminderHint: { color: colors.textMuted, fontSize: 11, lineHeight: 16, marginTop: 3 },
-  reminderTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm },
-  reminderTimeLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
-  errorText: { color: colors.danger, fontSize: 12, lineHeight: 18 },
-  retryText: { color: colors.primary, fontSize: 12, fontWeight: '700', marginTop: spacing.sm },
-  errorCard: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.border },
+  reminderIcon: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 7, backgroundColor: notes.accent },
+  reminderHint: { color: notes.secondary, fontSize: 13, lineHeight: 18, marginTop: 2 },
+  reminderTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: notes.separator, paddingTop: spacing.sm },
+  reminderTimeLabel: { color: notes.label, fontSize: 17 },
+  errorText: { color: notes.danger, fontSize: 13, lineHeight: 18 },
+  retryText: { color: notes.accent, fontSize: 15, fontWeight: '600', marginTop: spacing.sm },
+  errorCard: { ...group, padding: spacing.md },
   });
 });

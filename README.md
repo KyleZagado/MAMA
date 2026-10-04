@@ -36,9 +36,9 @@ saved per signed-in user on the device.
 
 ## Daily journal
 
-Swipe to **Daily Journal** to write in a notebook-style page with spiral
-binding, a margin line, and ruled paper (with a dark-paper variant in dark
-mode). One entry is kept per day. Entries auto-save while
+Swipe to **Daily Journal** to write in a clean page styled after iPhone Notes
+(white or black sheets, yellow accents, system font) in both light and dark
+mode. One entry is kept per day. Entries auto-save while
 you type, with their date and creation/update times recorded automatically.
 Use the calendar to open or create an entry for any day; marked dates contain
 saved entries. The journal supports one mood per entry (Great, Good, Okay, Sad,
