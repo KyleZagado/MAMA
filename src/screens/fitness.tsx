@@ -15,6 +15,13 @@ import { getDatabase } from '../database';
 import { deleteWorkoutLog, type WorkoutLog } from '../database/workouts';
 import { activityInfo, formatDuration, formatKm } from '../lib/activity';
 import { useWorkouts } from '../hooks/use-workouts';
+import {
+  bmiCategory,
+  bodyMassIndex,
+  formatBodyNumber,
+  profileHeightCm,
+  profileWeightKg,
+} from '../lib/body-metrics';
 import { fromDateKey, toDateKey } from '../lib/dates';
 
 function monthKeyOf(year: number, month: number) {
@@ -40,6 +47,9 @@ export function Fitness({ session }: { session: Session }) {
   const [activeTab, setActiveTab] = useState<'schedule' | 'history'>('schedule');
   const [calendarOpen, setCalendarOpen] = useState(false);
 
+  const weightKg = profileWeightKg(session);
+  const heightCm = profileHeightCm(session);
+  const bmi = bodyMassIndex(weightKg, heightCm);
   const monthKey = monthKeyOf(cursor.year, cursor.month);
   const { logs, activities, error, reload } = useWorkouts(session.user.id, monthKey);
 
@@ -128,6 +138,33 @@ export function Fitness({ session }: { session: Session }) {
             />
           }
         />
+
+        <Pressable
+          onPress={() => router.push('/profile')}
+          style={({ pressed }) => [styles.body, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={
+            weightKg || heightCm
+              ? `Body stats: ${weightKg ? `${weightKg} kilograms` : 'weight not set'}, ${heightCm ? `${heightCm} centimetres` : 'height not set'}${bmi ? `, BMI ${bmi}` : ''}. Edit in profile`
+              : 'Add your weight and height in profile'
+          }
+        >
+          {weightKg || heightCm ? (
+            <>
+              <BodyStat label="Weight" value={weightKg ? `${formatBodyNumber(weightKg)} kg` : '—'} />
+              <View style={styles.bodyDivider} />
+              <BodyStat label="Height" value={heightCm ? `${formatBodyNumber(heightCm)} cm` : '—'} />
+              <View style={styles.bodyDivider} />
+              <BodyStat label="BMI" value={bmi ? String(bmi) : '—'} meta={bmi ? bmiCategory(bmi) : undefined} />
+            </>
+          ) : (
+            <>
+              <Ionicons name="body-outline" size={16} color={colors.primary} />
+              <Text style={[styles.flex, styles.bodyEmpty]}>Add weight & height in Profile</Text>
+            </>
+          )}
+          <Ionicons name="chevron-forward" size={14} color={colors.textSubtle} />
+        </Pressable>
 
         <View style={styles.tabs}>
           {(['schedule', 'history'] as const).map((tab) => (
@@ -318,6 +355,18 @@ export function Fitness({ session }: { session: Session }) {
   );
 }
 
+function BodyStat({ label, value, meta }: { label: string; value: string; meta?: string }) {
+  return (
+    <View style={styles.bodyStat}>
+      <Text style={styles.bodyLabel}>{label}</Text>
+      <Text style={styles.bodyValue} numberOfLines={1}>
+        {value}
+        {meta ? <Text style={styles.bodyMeta}> {meta}</Text> : null}
+      </Text>
+    </View>
+  );
+}
+
 const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   safeArea: { flex: 1, backgroundColor: colors.background },
@@ -346,6 +395,25 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     elevation: 6,
   },
   recordText: { color: colors.onPrimary, fontSize: 15, fontWeight: '700' },
+  body: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  bodyStat: { flex: 1, minWidth: 0 },
+  bodyLabel: { color: colors.textSubtle, fontSize: 10, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' },
+  bodyValue: { color: colors.text, fontSize: 14, fontWeight: '700', marginTop: 1 },
+  bodyMeta: { color: colors.textMuted, fontSize: 11, fontWeight: '500' },
+  bodyDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: colors.border },
+  bodyEmpty: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
   tabs: {
     flexDirection: 'row',
     padding: 2,

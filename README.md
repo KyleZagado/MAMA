@@ -6,6 +6,8 @@ manually; no bank accounts or financial institutions are connected. Finance
 records, budgets, bills, and fitness schedules are stored locally on each
 signed-in user's device. Fitness includes a workout scheduler with day, week,
 and month views, recurring workouts and rest days, reminders, and workout history.
+Its body stats row shows the weight, height, and BMI saved in Profile and updates
+as soon as Profile is saved.
 The home carousel also includes a fasting tracker with timed protocols, custom
 fast durations, session history, a separate 5:2 weekly check-in, and a daily journal.
 

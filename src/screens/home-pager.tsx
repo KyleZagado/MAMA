@@ -32,17 +32,35 @@ export function HomePager({ session }: { session: Session }) {
   const [page, setPage] = useState(0);
   const [pageOrder, setPageOrder] = useState<HomePageId[]>(HOME_PAGES.map((item) => item.id));
   const [orderError, setOrderError] = useState<string | null>(null);
+  const widthRef = useRef(0);
 
+  const pageOrderRef = useRef(pageOrder);
+  const pageRef = useRef(page);
+  useEffect(() => {
+    pageOrderRef.current = pageOrder;
+    pageRef.current = page;
+  }, [page, pageOrder]);
+
+  // Reload the saved order/visibility on focus, but stay on the page the user was viewing.
   useFocusEffect(
     useCallback(() => {
       let mounted = true;
       Promise.all([loadHomePageOrder(session.user.id), loadHiddenHomePages(session.user.id)])
         .then(([order, hidden]) => {
           if (!mounted) return;
-          setPageOrder(order.filter((id) => !hidden.includes(id)));
-          setPage(0);
-          scrollRef.current?.scrollTo({ x: 0, animated: false });
           setOrderError(null);
+          const visible = order.filter((id) => !hidden.includes(id));
+          const current = pageOrderRef.current;
+          if (visible.length === current.length && visible.every((id, index) => id === current[index])) {
+            return;
+          }
+          const currentId = current[pageRef.current];
+          const nextIndex = Math.max(0, visible.indexOf(currentId));
+          setPageOrder(visible);
+          setPage(nextIndex);
+          requestAnimationFrame(() => {
+            scrollRef.current?.scrollTo({ x: nextIndex * widthRef.current, animated: false });
+          });
         })
         .catch((error: unknown) => {
           if (mounted) {
@@ -73,6 +91,7 @@ export function HomePager({ session }: { session: Session }) {
 
   function onLayout(event: LayoutChangeEvent) {
     const { width, height } = event.nativeEvent.layout;
+    widthRef.current = width;
     setSize({ width, height });
   }
 

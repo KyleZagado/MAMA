@@ -23,12 +23,8 @@ import {
   formatPace,
   type ActivityType,
 } from '../lib/activity';
+import { profileWeightKg as profileWeight } from '../lib/body-metrics';
 import { toDateKey } from '../lib/dates';
-
-function profileWeight(session: Session) {
-  const value = Number(session.user.user_metadata?.weight_kg);
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
 
 export function Activity({ session }: { session: Session }) {
   const [type, setType] = useState<ActivityType>('run');
