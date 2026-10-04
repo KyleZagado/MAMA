@@ -28,10 +28,11 @@ and phase estimates are informational and do not provide medical guidance.
 
 ## Home page sequence
 
-Use **Profile → Home page sequence** to move any main page earlier or later,
-send it directly to the first or last position, or restore the default order.
+Use **Profile → Home page sequence** to move any main page up or down, tap the
+eye icon to hide or show a page on Home (at least one page stays visible), or
+reset to the default order with every page shown.
 The default and reset order is Overview Tracker, To-do list, Wallets & finance,
-Food and water, Fitness, Fasting Tracker, then Daily Journal. The setting is
+Food and water, Fitness, Fasting Tracker, then Daily Journal. These settings are
 saved per signed-in user on the device.
 
 ## Daily journal

@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 
 import { HOME_PAGES, type HomePageId } from '../constants/home-pages';
-import { loadHomePageOrder } from '../lib/home-page-preference';
+import { loadHiddenHomePages, loadHomePageOrder } from '../lib/home-page-preference';
 import { refreshWidgets } from '../widgets/refresh';
 import { Consumption } from './consumption';
 import { Dashboard } from './dashboard';
@@ -36,10 +36,10 @@ export function HomePager({ session }: { session: Session }) {
   useFocusEffect(
     useCallback(() => {
       let mounted = true;
-      loadHomePageOrder(session.user.id)
-        .then((order) => {
+      Promise.all([loadHomePageOrder(session.user.id), loadHiddenHomePages(session.user.id)])
+        .then(([order, hidden]) => {
           if (!mounted) return;
-          setPageOrder(order);
+          setPageOrder(order.filter((id) => !hidden.includes(id)));
           setPage(0);
           scrollRef.current?.scrollTo({ x: 0, animated: false });
           setOrderError(null);

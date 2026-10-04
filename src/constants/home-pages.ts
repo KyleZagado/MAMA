@@ -39,3 +39,18 @@ export function moveHomePage(order: HomePageId[], pageId: HomePageId, targetInde
   next.splice(boundedTarget, 0, pageId);
   return next;
 }
+
+/** Keeps valid, unique hidden page ids and always leaves at least one page visible. */
+export function normalizeHiddenHomePages(value: unknown): HomePageId[] {
+  const requested = Array.isArray(value) ? value : [];
+  const hidden = HOME_PAGES.map((page) => page.id).filter((id) => requested.includes(id));
+  return hidden.length >= HOME_PAGES.length ? hidden.slice(1) : hidden;
+}
+
+export function toggleHiddenHomePage(hidden: HomePageId[], pageId: HomePageId) {
+  const next = hidden.includes(pageId)
+    ? hidden.filter((id) => id !== pageId)
+    : [...hidden, pageId];
+  if (next.length >= HOME_PAGES.length) return hidden;
+  return normalizeHiddenHomePages(next);
+}

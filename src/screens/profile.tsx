@@ -20,9 +20,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CurrencyPicker } from '../components/currency-picker';
 import { DEFAULT_CURRENCY, isCurrencyCode } from '../constants/currencies';
-import { DEFAULT_HOME_PAGE_ORDER, HOME_PAGES, moveHomePage, type HomePageId } from '../constants/home-pages';
+import {
+  DEFAULT_HOME_PAGE_ORDER,
+  HOME_PAGES,
+  moveHomePage,
+  toggleHiddenHomePage,
+  type HomePageId,
+} from '../constants/home-pages';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
-import { loadHomePageOrder, saveHomePageOrder } from '../lib/home-page-preference';
+import {
+  loadHiddenHomePages,
+  loadHomePageOrder,
+  saveHiddenHomePages,
+  saveHomePageOrder,
+} from '../lib/home-page-preference';
 import { supabase } from '../lib/supabase';
 import { createThemedStyleSheet, useTheme } from '../providers/theme-provider';
 
@@ -151,6 +162,7 @@ export function Profile({ session }: ProfileProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [homePageOrder, setHomePageOrder] = useState<HomePageId[]>([...DEFAULT_HOME_PAGE_ORDER]);
+  const [hiddenHomePages, setHiddenHomePages] = useState<HomePageId[]>([]);
   const [isLoadingHomePageOrder, setIsLoadingHomePageOrder] = useState(true);
   const [isSavingHomePageOrder, setIsSavingHomePageOrder] = useState(false);
   const [homePageOrderError, setHomePageOrderError] = useState<string | null>(null);
@@ -161,10 +173,11 @@ export function Profile({ session }: ProfileProps) {
 
   useEffect(() => {
     let mounted = true;
-    loadHomePageOrder(session.user.id)
-      .then((order) => {
+    Promise.all([loadHomePageOrder(session.user.id), loadHiddenHomePages(session.user.id)])
+      .then(([order, hidden]) => {
         if (mounted) {
           setHomePageOrder(order);
+          setHiddenHomePages(hidden);
           setHomePageOrderError(null);
         }
       })
@@ -228,12 +241,30 @@ export function Profile({ session }: ProfileProps) {
     }
   }
 
+  async function toggleHomePageVisibility(pageId: HomePageId) {
+    if (isSavingHomePageOrder || isLoadingHomePageOrder) return;
+    const next = toggleHiddenHomePage(hiddenHomePages, pageId);
+    if (next === hiddenHomePages) return;
+    setIsSavingHomePageOrder(true);
+    setHomePageOrderError(null);
+    try {
+      setHiddenHomePages(await saveHiddenHomePages(session.user.id, next));
+    } catch (error: unknown) {
+      setHomePageOrderError(
+        error instanceof Error ? error.message : 'Could not update hidden pages.',
+      );
+    } finally {
+      setIsSavingHomePageOrder(false);
+    }
+  }
+
   async function resetHomePageOrder() {
     if (isSavingHomePageOrder || isLoadingHomePageOrder) return;
     setIsSavingHomePageOrder(true);
     setHomePageOrderError(null);
     try {
       setHomePageOrder(await saveHomePageOrder(session.user.id, DEFAULT_HOME_PAGE_ORDER));
+      setHiddenHomePages(await saveHiddenHomePages(session.user.id, []));
     } catch (error: unknown) {
       setHomePageOrderError(
         error instanceof Error ? error.message : 'Could not reset your home page order.',
@@ -415,7 +446,7 @@ export function Profile({ session }: ProfileProps) {
               <View style={styles.flex}>
                 <Text style={styles.sectionTitle}>Home page sequence</Text>
                 <Text style={styles.hint}>
-                  Choose the order of pages when you swipe through Home.
+                  Reorder pages or tap the eye to hide one.
                 </Text>
               </View>
               <Pressable
@@ -436,66 +467,65 @@ export function Profile({ session }: ProfileProps) {
               const page = HOME_PAGES.find((item) => item.id === pageId);
               if (!page) return null;
               const disabled = isLoadingHomePageOrder || isSavingHomePageOrder;
+              const isHidden = hiddenHomePages.includes(page.id);
+              const isLastVisible = !isHidden && hiddenHomePages.length >= HOME_PAGES.length - 1;
+              const isFirst = index <= 0;
+              const isLast = index >= homePageOrder.length - 1;
               return (
-                <View key={page.id} style={styles.homePageRow}>
-                  <View style={styles.homePagePosition}>
-                    <Text style={styles.homePagePositionText}>{index + 1}</Text>
-                  </View>
-                  <Text style={styles.homePageName}>{page.label}</Text>
-                  <View style={styles.reorderActions}>
-                    <Pressable
-                      onPress={() => reorderHomePage(page.id, 0)}
-                      disabled={disabled || index <= 0}
-                      style={({ pressed }) => [
-                        styles.reorderButton,
-                        (disabled || index <= 0) && styles.disabled,
-                        pressed && styles.pressed,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Move ${page.label} to first`}
-                    >
-                      <Ionicons name="play-skip-back" size={16} color={colors.primary} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => reorderHomePage(page.id, index - 1)}
-                      disabled={disabled || index <= 0}
-                      style={({ pressed }) => [
-                        styles.reorderButton,
-                        (disabled || index <= 0) && styles.disabled,
-                        pressed && styles.pressed,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Move ${page.label} earlier`}
-                    >
-                      <Ionicons name="chevron-up" size={20} color={colors.primary} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => reorderHomePage(page.id, index + 1)}
-                      disabled={disabled || index < 0 || index >= HOME_PAGES.length - 1}
-                      style={({ pressed }) => [
-                        styles.reorderButton,
-                        (disabled || index < 0 || index >= HOME_PAGES.length - 1) && styles.disabled,
-                        pressed && styles.pressed,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Move ${page.label} later`}
-                    >
-                      <Ionicons name="chevron-down" size={20} color={colors.primary} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => reorderHomePage(page.id, HOME_PAGES.length - 1)}
-                      disabled={disabled || index < 0 || index >= HOME_PAGES.length - 1}
-                      style={({ pressed }) => [
-                        styles.reorderButton,
-                        (disabled || index < 0 || index >= HOME_PAGES.length - 1) && styles.disabled,
-                        pressed && styles.pressed,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Move ${page.label} to last`}
-                    >
-                      <Ionicons name="play-skip-forward" size={16} color={colors.primary} />
-                    </Pressable>
-                  </View>
+                <View key={page.id} style={[styles.homePageRow, index > 0 && styles.homePageDivider]}>
+                  <Pressable
+                    onPress={() => toggleHomePageVisibility(page.id)}
+                    disabled={disabled || isLastVisible}
+                    hitSlop={6}
+                    style={({ pressed }) => [
+                      styles.reorderButton,
+                      (disabled || isLastVisible) && styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="switch"
+                    accessibilityLabel={`Show ${page.label} on Home`}
+                    accessibilityState={{ checked: !isHidden, disabled: disabled || isLastVisible }}
+                  >
+                    <Ionicons
+                      name={isHidden ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={isHidden ? colors.textSubtle : colors.primary}
+                    />
+                  </Pressable>
+                  <Text
+                    style={[styles.homePageName, isHidden && styles.homePageNameHidden]}
+                    numberOfLines={1}
+                  >
+                    {page.label}
+                  </Text>
+                  <Pressable
+                    onPress={() => reorderHomePage(page.id, index - 1)}
+                    disabled={disabled || isFirst}
+                    hitSlop={4}
+                    style={({ pressed }) => [
+                      styles.reorderButton,
+                      (disabled || isFirst) && styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move ${page.label} earlier`}
+                  >
+                    <Ionicons name="chevron-up" size={18} color={colors.textMuted} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => reorderHomePage(page.id, index + 1)}
+                    disabled={disabled || isLast}
+                    hitSlop={4}
+                    style={({ pressed }) => [
+                      styles.reorderButton,
+                      (disabled || isLast) && styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move ${page.label} later`}
+                  >
+                    <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                  </Pressable>
                 </View>
               );
             })}
@@ -759,31 +789,16 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     borderColor: colors.border,
   },
   sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  homePagesHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  homePagesHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   appearanceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   appearanceCopy: { flex: 1 },
-  homePageRow: {
-    minHeight: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  homePagePosition: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-    backgroundColor: colors.primarySoft,
-  },
-  homePagePositionText: { color: colors.primary, fontSize: 13, fontWeight: '800' },
-  homePageName: { flex: 1, color: colors.text, fontSize: 13, fontWeight: '600' },
-  reorderActions: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  homePageRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  homePageDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  homePageName: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
+  homePageNameHidden: { color: colors.textSubtle, fontWeight: '500' },
   reorderButton: { width: 32, height: 36, alignItems: 'center', justifyContent: 'center' },
   resetOrderButton: {
-    minHeight: 36,
+    minHeight: 30,
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
     borderRadius: radius.sm,
