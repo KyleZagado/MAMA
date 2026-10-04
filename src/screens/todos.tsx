@@ -5,7 +5,6 @@ import { router } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
-import { ProfileButton } from '../components/profile-button';
+import { PageHeader } from '../components/page-header';
 import { Chip, ChipRow } from '../components/form';
 import { PickerField } from '../components/picker-field';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
@@ -50,23 +49,9 @@ const CATEGORIES = [
 
 const RHYTHM_CARD = '#1B2420';
 const WEEK_PREVIEW = 3;
-const SERIF = Platform.select({ ios: 'Georgia', default: 'serif' });
 
 function categoryColor(category: string | null) {
   return CATEGORIES.find((item) => item.id === category)?.color ?? colors.textSubtle;
-}
-
-function greeting(hour: number) {
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function firstName(session: Session) {
-  const name = session.user.user_metadata?.display_name;
-  return typeof name === 'string' && name.trim()
-    ? name.trim().split(/\s+/)[0]
-    : (session.user.email?.split('@')[0] ?? 'there');
 }
 
 function byPriorityThenTime(a: Todo, b: Todo) {
@@ -259,7 +244,6 @@ export function Todos({ session }: { session: Session }) {
     ));
   }
 
-  const now = new Date();
   const weekVisible = showAllWeek ? groups.week : groups.week.slice(0, WEEK_PREVIEW);
 
   return (
@@ -269,19 +253,7 @@ export function Todos({ session }: { session: Session }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerRow}>
-          <Text style={styles.date}>
-            <Text style={styles.weekday}>
-              {now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
-            </Text>
-            {'  •  '}
-            {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-          </Text>
-          <ProfileButton session={session} />
-        </View>
-        <Text style={styles.greeting}>
-          {greeting(now.getHours())}, {firstName(session)}
-        </Text>
+        <PageHeader session={session} title="To-do" />
         <ChipRow>
           <Chip label="New detailed task" selected={false} onPress={() => router.push('/task-form')} />
           <Chip label="Lists / Group tasks" selected={false} onPress={() => router.push('/task-lists')} />
@@ -534,17 +506,6 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   pressed: { opacity: 0.75 },
   disabled: { opacity: 0.45 },
   fade: { opacity: 0.6 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  date: { flex: 1, color: colors.textMuted, fontSize: 15 },
-  weekday: { color: colors.primary, fontWeight: '800', letterSpacing: 0.6 },
-  greeting: {
-    color: colors.text,
-    fontFamily: SERIF,
-    fontSize: 36,
-    lineHeight: 44,
-    marginTop: spacing.sm,
-    marginBottom: spacing.lg,
-  },
   search: {
     flexDirection: 'row',
     alignItems: 'center',

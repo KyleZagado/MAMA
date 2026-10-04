@@ -6,11 +6,12 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ProfileButton } from '../components/profile-button';
+import { PageHeader } from '../components/page-header';
+import { RoundButton } from '../components/round-button';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
 import { loadOverviewCalendar, type OverviewActivity, type OverviewActivityType } from '../database/overview';
-import { addDaysToKey, fromDateKey, toDateKey } from '../lib/dates';
+import { fromDateKey, toDateKey } from '../lib/dates';
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -77,11 +78,14 @@ export function Overview({ session, isVisible = true }: { session: Session; isVi
 
   const range = useMemo(() => monthRange(cursor.year, cursor.month), [cursor]);
   const cells = useMemo(() => {
-    const count = Math.round(
-      (fromDateKey(range.through).getTime() - fromDateKey(range.from).getTime()) / 86_400_000,
-    ) + 1;
-    return Array.from({ length: count }, (_, index) => addDaysToKey(range.from, index));
-  }, [range]);
+    const offset = (new Date(cursor.year, cursor.month, 1).getDay() + 6) % 7;
+    const days = new Date(cursor.year, cursor.month + 1, 0).getDate();
+    const monthKey = monthKeyOf(cursor.year, cursor.month);
+    return [
+      ...Array.from({ length: offset }, () => null),
+      ...Array.from({ length: days }, (_, index) => `${monthKey}-${String(index + 1).padStart(2, '0')}`),
+    ];
+  }, [cursor]);
 
   const reload = useCallback(async () => {
       const token = ++request.current;
@@ -161,13 +165,7 @@ export function Overview({ session, isVisible = true }: { session: Session; isVi
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>mama</Text>
-            <Text style={styles.title}>Overview Tracker</Text>
-          </View>
-          <ProfileButton session={session} />
-        </View>
+        <PageHeader session={session} title="Overview" />
 
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
@@ -181,34 +179,25 @@ export function Overview({ session, isVisible = true }: { session: Session; isVi
         </View>
 
         <View style={styles.calendarCard}>
-          <View style={styles.monthHeader}>
-            <Pressable
-              onPress={() => changeMonth(-1)}
-              hitSlop={8}
-              style={styles.monthButton}
-              accessibilityRole="button"
-              accessibilityLabel="Previous month"
-            >
-              <Ionicons name="chevron-back" size={20} color={colors.text} />
-            </Pressable>
-            <Text style={styles.monthTitle}>{monthLabel(cursor.year, cursor.month)}</Text>
-            <Pressable
-              onPress={() => changeMonth(1)}
-              hitSlop={8}
-              style={styles.monthButton}
-              accessibilityRole="button"
-              accessibilityLabel="Next month"
-            >
-              <Ionicons name="chevron-forward" size={20} color={colors.text} />
-            </Pressable>
+          <View style={styles.monthRow}>
+            <RoundButton icon="chevron-back" label="Previous month" size={30} iconSize={16} color={colors.textMuted} onPress={() => changeMonth(-1)} />
+            <View style={styles.monthTitleBlock}>
+              <Text style={styles.monthTitle}>{monthLabel(cursor.year, cursor.month)}</Text>
+              <View style={styles.monthMetaRow}>
+                <Text style={styles.monthMeta}>
+                  {activeDays} active {activeDays === 1 ? 'day' : 'days'}
+                </Text>
+                {isLoading && <ActivityIndicator size="small" color={colors.textSubtle} />}
+              </View>
+            </View>
+            <RoundButton icon="chevron-forward" label="Next month" size={30} iconSize={16} color={colors.textMuted} onPress={() => changeMonth(1)} />
           </View>
           <View style={styles.calendarGrid}>
             {WEEKDAYS.map((day, index) => (
               <Text key={`${day}-${index}`} style={styles.weekday}>{day}</Text>
             ))}
-            {cells.map((dateKey) => {
-              const date = fromDateKey(dateKey);
-              const isCurrentMonth = date.getMonth() === cursor.month;
+            {cells.map((dateKey, index) => {
+              if (dateKey === null) return <View key={`blank-${index}`} style={styles.dayCell} />;
               const isSelected = dateKey === selectedDate;
               const count = monthCounts[dateKey] ?? 0;
               return (
@@ -220,40 +209,15 @@ export function Overview({ session, isVisible = true }: { session: Session; isVi
                   accessibilityLabel={`${dayTitle(dateKey)}${count ? `, ${count} activities` : ', no activity'}`}
                   accessibilityState={{ selected: isSelected }}
                 >
-                  <View
-                    style={[
-                      styles.day,
-                      dateKey === today && styles.today,
-                      isSelected && styles.selectedDay,
-                      !isCurrentMonth && styles.outsideMonthDay,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayNumber,
-                        !isCurrentMonth && styles.outsideMonthNumber,
-                        isSelected && styles.selectedDayNumber,
-                      ]}
-                    >
-                      {date.getDate()}
+                  <View style={[styles.day, dateKey === today && styles.today, isSelected && styles.selectedDay]}>
+                    <Text style={[styles.dayNumber, isSelected && styles.selectedDayNumber]}>
+                      {fromDateKey(dateKey).getDate()}
                     </Text>
-                    <View style={styles.markerRow}>
-                      {count > 0 && (
-                        <View style={[styles.marker, isSelected && styles.selectedMarker]} />
-                      )}
-                      {count > 1 && (
-                        <View style={[styles.marker, styles.secondMarker, isSelected && styles.selectedMarker]} />
-                      )}
-                    </View>
                   </View>
+                  <View style={[styles.marker, count > 0 && styles.markerOn]} />
                 </Pressable>
               );
             })}
-          </View>
-          <View style={styles.legend}>
-            <View style={styles.legendMarker} />
-            <Text style={styles.legendText}>Activity logged</Text>
-            {isLoading && <ActivityIndicator size="small" color={colors.primary} />}
           </View>
         </View>
 
@@ -334,34 +298,26 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: 60,
   },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
-  brand: { color: colors.textMuted, fontSize: 13 },
-  title: { color: colors.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
   summaryRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   summaryCard: { flex: 1, padding: spacing.lg, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   summaryValue: { color: colors.text, fontSize: 24, fontWeight: '800' },
   summaryLabel: { color: colors.textMuted, fontSize: 12, marginTop: spacing.xs },
   calendarCard: { padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  monthHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  monthButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: colors.surfaceAlt },
-  monthTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
-  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  weekday: { width: '14.2857%', height: 32, textAlign: 'center', textAlignVertical: 'center', color: colors.textSubtle, fontSize: 12, fontWeight: '700' },
-  dayCell: { width: '14.2857%', height: 54, alignItems: 'center', justifyContent: 'center' },
-  day: { width: 40, height: 46, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
-  today: { borderWidth: 1.5, borderColor: colors.primary },
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  monthTitleBlock: { alignItems: 'center' },
+  monthTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  monthMetaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
+  monthMeta: { color: colors.textMuted, fontSize: 12 },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.md },
+  weekday: { width: '14.2857%', textAlign: 'center', color: colors.textSubtle, fontSize: 12, fontWeight: '700', marginBottom: spacing.sm },
+  dayCell: { width: '14.2857%', height: 42, alignItems: 'center', justifyContent: 'center' },
+  day: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
+  today: { borderWidth: 1, borderColor: colors.primary },
   selectedDay: { backgroundColor: colors.heroBackground, borderColor: colors.heroBackground },
-  outsideMonthDay: { opacity: 0.55 },
   dayNumber: { color: colors.text, fontSize: 14, fontWeight: '600' },
-  outsideMonthNumber: { color: colors.textSubtle },
-  selectedDayNumber: { color: colors.heroText },
-  markerRow: { height: 7, flexDirection: 'row', gap: 3, alignItems: 'center', marginTop: 1 },
-  marker: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.accent },
-  secondMarker: { backgroundColor: '#A78BFA' },
-  selectedMarker: { backgroundColor: colors.heroText },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm, paddingHorizontal: spacing.xs },
-  legendMarker: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accent },
-  legendText: { flex: 1, color: colors.textMuted, fontSize: 11 },
+  selectedDayNumber: { color: colors.onPrimary },
+  marker: { width: 5, height: 5, borderRadius: 3, marginTop: 2, backgroundColor: 'transparent' },
+  markerOn: { backgroundColor: colors.accent },
   selectedHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xl, marginBottom: spacing.md },
   sectionTitle: { color: colors.text, fontSize: 19, fontWeight: '800' },
   sectionMeta: { color: colors.textMuted, fontSize: 13, marginTop: 3 },

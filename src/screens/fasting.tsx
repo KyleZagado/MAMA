@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { PickerField } from '../components/picker-field';
-import { ProfileButton } from '../components/profile-button';
+import { PageHeader } from '../components/page-header';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
 import {
@@ -341,13 +341,7 @@ export function Fasting({ session }: { session: Session }) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>mama</Text>
-            <Text style={styles.title}>Fasting Tracker</Text>
-          </View>
-          <ProfileButton session={session} />
-        </View>
+        <PageHeader session={session} title="Fasting" />
 
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>{active ? 'FAST IN PROGRESS' : 'YOUR FASTING PLAN'}</Text>
@@ -813,14 +807,6 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   },
   pressed: { opacity: 0.76 },
   disabled: { opacity: 0.55 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  brand: { color: colors.textMuted, fontSize: 13 },
-  title: { color: colors.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
   hero: {
     alignItems: 'center',
     padding: spacing.lg,

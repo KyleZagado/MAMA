@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FieldLabel, PrimaryButton } from '../components/form';
 import { PickerField } from '../components/picker-field';
-import { ProfileButton } from '../components/profile-button';
+import { PageHeader } from '../components/page-header';
 import { TransactionRow } from '../components/transaction-row';
 import { accountTypeInfo } from '../constants/finance';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
@@ -34,13 +34,6 @@ type DashboardProps = {
 };
 
 const RECENT_LIMIT = 5;
-
-function firstName(session: Session) {
-  const fullName = session.user.user_metadata?.display_name;
-  return typeof fullName === 'string' && fullName.trim()
-    ? fullName.trim().split(/\s+/)[0]
-    : (session.user.email?.split('@')[0] ?? 'there');
-}
 
 export function Dashboard({ session }: DashboardProps) {
   const { wallets, transactions, totalMinor, goalMinor, monthly, isLoading, error, reload } =
@@ -136,13 +129,7 @@ export function Dashboard({ session }: DashboardProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>mama</Text>
-            <Text style={styles.greeting}>Hi, {firstName(session)}</Text>
-          </View>
-          <ProfileButton session={session} />
-        </View>
+        <PageHeader session={session} title="Finance" />
 
         <View style={styles.hero}>
           <View style={styles.heroTop}>
@@ -534,20 +521,6 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     paddingBottom: 120,
   },
   pressed: { opacity: 0.75 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  brand: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-    marginBottom: 4,
-  },
-  greeting: { color: colors.text, fontSize: 26, fontWeight: '700', letterSpacing: -0.8 },
   hero: {
     padding: 24,
     borderRadius: 32,

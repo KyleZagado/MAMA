@@ -12,14 +12,24 @@ type Props = {
   onPress: () => void;
   disabled?: boolean;
   size?: number;
+  iconSize?: number;
   color?: string;
 };
 
-export function RoundButton({ icon, label, onPress, disabled, size = 44, color = colors.heroBackground }: Props) {
+export function RoundButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+  size = 44,
+  iconSize = 20,
+  color = colors.heroBackground,
+}: Props) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      hitSlop={size < 44 ? (44 - size) / 2 : undefined}
       style={({ pressed }) => [
         styles.button,
         { width: size, height: size, borderRadius: size / 2 },
@@ -30,7 +40,7 @@ export function RoundButton({ icon, label, onPress, disabled, size = 44, color =
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
     >
-      <Ionicons name={icon} size={20} color={color} />
+      <Ionicons name={icon} size={iconSize} color={color} />
     </Pressable>
   );
 }

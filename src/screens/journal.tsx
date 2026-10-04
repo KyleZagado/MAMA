@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ProfileButton } from '../components/profile-button';
+import { PageHeader } from '../components/page-header';
 import { PickerField } from '../components/picker-field';
 import { darkColors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import {
@@ -150,6 +150,8 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
   const [reminderTime, setReminderTime] = useState('20:00');
   const [isSavingReminder, setIsSavingReminder] = useState(false);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const range = useMemo(() => monthRange(cursor.year, cursor.month), [cursor]);
   const cells = useMemo(() => {
@@ -159,6 +161,10 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
       ) + 1;
     return Array.from({ length: count }, (_, index) => addDaysToKey(range.from, index));
   }, [range]);
+  const weekDays = useMemo(() => {
+    const start = addDaysToKey(selectedDate, -((fromDateKey(selectedDate).getDay() + 6) % 7));
+    return Array.from({ length: 7 }, (_, index) => addDaysToKey(start, index));
+  }, [selectedDate]);
   const entriesByDate = useMemo(
     () => new Map(entries.map((item) => [item.entry_date, item])),
     [entries],
@@ -357,6 +363,14 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
     setCursor({ year: next.getFullYear(), month: next.getMonth() });
   }
 
+  function clearFilters() {
+    setQuery('');
+    setMoodFilter(null);
+    setTagFilter(null);
+    setShowFavoritesOnly(false);
+    setFilterBySelectedDate(false);
+  }
+
   function addTag(value: string) {
     if (!canEditEntry) return;
     const tag = value.trim().replace(/^#/, '');
@@ -539,71 +553,79 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.brand}>mama</Text>
-              <Text style={styles.title}>Journal</Text>
-            </View>
-            <ProfileButton session={session} />
-          </View>
+          <PageHeader
+            session={session}
+            title="Journal"
+            style={styles.header}
+            actions={
+              <>
+              {isLoading && <ActivityIndicator size="small" color={notes.accent} />}
+              <Pressable
+                onPress={() => setFiltersOpen((open) => !open)}
+                style={[styles.iconButton, (filtersOpen || shouldShowResults) && styles.iconButtonActive]}
+                accessibilityRole="button"
+                accessibilityLabel="Search and filter entries"
+                accessibilityState={{ expanded: filtersOpen }}
+              >
+                <Ionicons name="search" size={19} color={notes.accent} />
+                {shouldShowResults && !filtersOpen && <View style={styles.activeBadge} />}
+              </Pressable>
+              <Pressable
+                onPress={() => setCalendarOpen((open) => !open)}
+                style={[styles.iconButton, calendarOpen && styles.iconButtonActive]}
+                accessibilityRole="button"
+                accessibilityLabel={calendarOpen ? 'Hide month calendar' : 'Show month calendar'}
+                accessibilityState={{ expanded: calendarOpen }}
+              >
+                <Ionicons name="calendar-outline" size={19} color={notes.accent} />
+              </Pressable>
+              </>
+            }
+          />
 
-          <View style={styles.filtersCard}>
-            <View style={styles.searchBox}>
-              <Ionicons name="search" size={17} color={notes.secondary} />
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search"
-                placeholderTextColor={notes.secondary}
-                style={styles.searchInput}
-                returnKeyType="search"
-                accessibilityLabel="Search journal entries"
-              />
-              {query.length > 0 && (
-                <Pressable onPress={() => setQuery('')} accessibilityLabel="Clear search">
-                  <Ionicons name="close-circle" size={17} color={notes.secondary} />
-                </Pressable>
-              )}
-            </View>
-            <View style={styles.filterRow}>
-              <FilterButton
-                label="All entries"
-                selected={!showFavoritesOnly}
-                onPress={() => setShowFavoritesOnly(false)}
-              />
-              <FilterButton
-                label="★ Favorites"
-                selected={showFavoritesOnly}
-                onPress={() => setShowFavoritesOnly(true)}
-              />
-              <FilterButton
-                label="Selected date"
-                selected={filterBySelectedDate}
-                onPress={() => setFilterBySelectedDate((value) => !value)}
-              />
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-              <FilterButton
-                label="Any mood"
-                selected={moodFilter === null}
-                onPress={() => setMoodFilter(null)}
-              />
-              {JOURNAL_MOODS.map((mood) => (
-                <FilterButton
-                  key={mood.id}
-                  label={`${mood.emoji} ${mood.label}`}
-                  selected={moodFilter === mood.id}
-                  onPress={() => setMoodFilter(moodFilter === mood.id ? null : mood.id)}
+          {filtersOpen && (
+            <View style={styles.filtersCard}>
+              <View style={styles.searchBox}>
+                <Ionicons name="search" size={16} color={notes.secondary} />
+                <TextInput
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Search"
+                  placeholderTextColor={notes.secondary}
+                  style={styles.searchInput}
+                  returnKeyType="search"
+                  autoFocus
+                  accessibilityLabel="Search journal entries"
                 />
-              ))}
-            </ScrollView>
-            {allTags.length > 0 && (
+                {query.length > 0 && (
+                  <Pressable onPress={() => setQuery('')} accessibilityLabel="Clear search">
+                    <Ionicons name="close-circle" size={16} color={notes.secondary} />
+                  </Pressable>
+                )}
+              </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+                {shouldShowResults && (
+                  <FilterButton label="✕ Clear" selected={false} onPress={clearFilters} />
+                )}
                 <FilterButton
-                  label="Any tag"
-                  selected={tagFilter === null}
-                  onPress={() => setTagFilter(null)}
+                  label="★ Favorites"
+                  selected={showFavoritesOnly}
+                  onPress={() => setShowFavoritesOnly((value) => !value)}
                 />
+                <FilterButton
+                  label="This day"
+                  selected={filterBySelectedDate}
+                  onPress={() => setFilterBySelectedDate((value) => !value)}
+                />
+                {JOURNAL_MOODS.map((mood) => (
+                  <FilterButton
+                    key={mood.id}
+                    label={mood.emoji}
+                    accessibilityLabel={`${mood.label} mood`}
+                    selected={moodFilter === mood.id}
+                    onPress={() => setMoodFilter(moodFilter === mood.id ? null : mood.id)}
+                  />
+                ))}
                 {allTags.map((tag) => (
                   <FilterButton
                     key={tag}
@@ -613,82 +635,87 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                   />
                 ))}
               </ScrollView>
-            )}
-          </View>
+            </View>
+          )}
 
-          <View style={styles.calendarCard}>
-            <View style={styles.monthHeader}>
-              <Pressable
-                onPress={() => changeMonth(-1)}
-                style={styles.monthButton}
-                accessibilityRole="button"
-                accessibilityLabel="Previous month"
-              >
-                <Ionicons name="chevron-back" size={22} color={notes.accent} />
-              </Pressable>
-              <Text style={styles.monthTitle}>{monthLabel(cursor.year, cursor.month)}</Text>
-              <Pressable
-                onPress={() => changeMonth(1)}
-                style={styles.monthButton}
-                accessibilityRole="button"
-                accessibilityLabel="Next month"
-              >
-                <Ionicons name="chevron-forward" size={22} color={notes.accent} />
-              </Pressable>
-            </View>
-            <View style={styles.calendarGrid}>
-              {WEEKDAYS.map((day, index) => (
-                <Text key={`${day}-${index}`} style={styles.weekday}>{day}</Text>
-              ))}
-              {cells.map((dateKey) => {
-                const date = fromDateKey(dateKey);
-                const inMonth = date.getMonth() === cursor.month;
-                const chosen = dateKey === selectedDate;
-                const hasEntry = entriesByDate.has(dateKey);
-                return (
-                  <Pressable
+          {calendarOpen ? (
+            <View style={styles.calendarCard}>
+              <View style={styles.monthHeader}>
+                <Pressable
+                  onPress={() => changeMonth(-1)}
+                  style={styles.monthButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous month"
+                >
+                  <Ionicons name="chevron-back" size={20} color={notes.accent} />
+                </Pressable>
+                <Text style={styles.monthTitle}>{monthLabel(cursor.year, cursor.month)}</Text>
+                <Pressable
+                  onPress={() => changeMonth(1)}
+                  style={styles.monthButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Next month"
+                >
+                  <Ionicons name="chevron-forward" size={20} color={notes.accent} />
+                </Pressable>
+              </View>
+              <View style={styles.calendarGrid}>
+                {WEEKDAYS.map((day, index) => (
+                  <Text key={`${day}-${index}`} style={styles.weekday}>{day}</Text>
+                ))}
+                {cells.map((dateKey) => (
+                  <DayButton
                     key={dateKey}
-                    onPress={() => void selectDate(dateKey)}
+                    dateKey={dateKey}
+                    muted={fromDateKey(dateKey).getMonth() !== cursor.month}
+                    selected={dateKey === selectedDate}
+                    isToday={dateKey === today}
+                    hasEntry={entriesByDate.has(dateKey)}
                     disabled={isLoading}
-                    style={styles.dayCell}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${dateLabel(dateKey)}${hasEntry ? ', journal entry' : ', no entry'}`}
-                    accessibilityState={{ selected: chosen }}
-                  >
-                    <View
-                      style={[
-                        styles.day,
-                        dateKey === today && styles.today,
-                        chosen && styles.selectedDay,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.dayNumber,
-                          !inMonth && styles.outsideMonthNumber,
-                          chosen && styles.selectedDayNumber,
-                        ]}
-                      >
-                        {date.getDate()}
-                      </Text>
-                      <View
-                        style={[
-                          styles.entryDot,
-                          hasEntry && styles.entryDotActive,
-                          chosen && hasEntry && styles.entryDotSelected,
-                        ]}
-                      />
-                    </View>
-                  </Pressable>
-                );
-              })}
+                    onPress={() => {
+                      setCalendarOpen(false);
+                      void selectDate(dateKey);
+                    }}
+                  />
+                ))}
+              </View>
             </View>
-            <View style={styles.legend}>
-              <View style={styles.entryDotActive} />
-              <Text style={styles.legendText}>Journal entry</Text>
-              {isLoading && <ActivityIndicator size="small" color={notes.accent} />}
+          ) : (
+            <View style={styles.weekStrip}>
+              <Pressable
+                onPress={() => void selectDate(addDaysToKey(selectedDate, -7))}
+                disabled={isLoading}
+                style={styles.weekArrow}
+                accessibilityRole="button"
+                accessibilityLabel="Previous week"
+              >
+                <Ionicons name="chevron-back" size={18} color={notes.accent} />
+              </Pressable>
+              {weekDays.map((dateKey, index) => (
+                <View key={dateKey} style={styles.weekDay}>
+                  <Text style={styles.weekdayCompact}>{WEEKDAYS[index]}</Text>
+                  <DayButton
+                    dateKey={dateKey}
+                    selected={dateKey === selectedDate}
+                    isToday={dateKey === today}
+                    hasEntry={entriesByDate.has(dateKey)}
+                    disabled={isLoading}
+                    compact
+                    onPress={() => void selectDate(dateKey)}
+                  />
+                </View>
+              ))}
+              <Pressable
+                onPress={() => void selectDate(addDaysToKey(selectedDate, 7))}
+                disabled={isLoading}
+                style={styles.weekArrow}
+                accessibilityRole="button"
+                accessibilityLabel="Next week"
+              >
+                <Ionicons name="chevron-forward" size={18} color={notes.accent} />
+              </Pressable>
             </View>
-          </View>
+          )}
 
           {shouldShowResults && (
             <View style={styles.resultsCard}>
@@ -969,20 +996,68 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
   );
 }
 
+function DayButton({
+  dateKey,
+  selected,
+  isToday,
+  hasEntry,
+  disabled,
+  onPress,
+  muted = false,
+  compact = false,
+}: {
+  dateKey: string;
+  selected: boolean;
+  isToday: boolean;
+  hasEntry: boolean;
+  disabled: boolean;
+  onPress: () => void;
+  muted?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={compact ? undefined : styles.dayCell}
+      accessibilityRole="button"
+      accessibilityLabel={`${dateLabel(dateKey)}${hasEntry ? ', journal entry' : ', no entry'}`}
+      accessibilityState={{ selected }}
+    >
+      <View style={[styles.day, selected && styles.selectedDay]}>
+        <Text
+          style={[
+            styles.dayNumber,
+            muted && styles.outsideMonthNumber,
+            isToday && !selected && styles.todayNumber,
+            selected && styles.selectedDayNumber,
+          ]}
+        >
+          {fromDateKey(dateKey).getDate()}
+        </Text>
+      </View>
+      <View style={[styles.entryDot, hasEntry && styles.entryDotActive]} />
+    </Pressable>
+  );
+}
+
 function FilterButton({
   label,
   selected,
   onPress,
+  accessibilityLabel,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  accessibilityLabel?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
       style={[styles.filterButton, selected && styles.filterButtonSelected]}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected }}
     >
       <Text style={[styles.filterButtonText, selected && styles.filterButtonTextSelected]}>{label}</Text>
@@ -1024,17 +1099,33 @@ const styles = createThemedStyleSheet((colors) => {
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
     alignSelf: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 22,
     paddingTop: spacing.md,
     paddingBottom: 64,
     gap: spacing.md,
   },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: { color: notes.secondary, fontSize: 13 },
-  title: { color: notes.label, fontSize: 34, fontWeight: '700', letterSpacing: 0.4, marginTop: 2 },
-  filtersCard: { gap: spacing.sm },
+  header: { marginBottom: 0 },
+  iconButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: notes.fill,
+  },
+  iconButtonActive: { backgroundColor: notes.accentSoft },
+  activeBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: notes.accent,
+  },
+  filtersCard: { gap: spacing.xs, marginTop: -spacing.xs },
   searchBox: {
-    minHeight: 38,
+    minHeight: 36,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1042,37 +1133,39 @@ const styles = createThemedStyleSheet((colors) => {
     borderRadius: 10,
     backgroundColor: notes.fill,
   },
-  searchInput: { flex: 1, color: notes.label, fontSize: 17, paddingVertical: 7 },
-  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  filterScroll: { gap: spacing.xs, paddingVertical: 2 },
+  searchInput: { flex: 1, color: notes.label, fontSize: 16, paddingVertical: 6 },
+  filterScroll: { gap: 6, paddingVertical: 2 },
   filterButton: {
-    minHeight: 32,
+    minHeight: 30,
+    minWidth: 30,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     borderRadius: radius.pill,
     backgroundColor: notes.fill,
   },
   filterButtonSelected: { backgroundColor: notes.accentSoft },
   filterButtonText: { color: notes.label, fontSize: 13, fontWeight: '500' },
   filterButtonTextSelected: { color: notes.accent, fontWeight: '600' },
-  calendarCard: { ...group, padding: spacing.md },
-  monthHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  monthButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  monthTitle: { color: notes.label, fontSize: 17, fontWeight: '600' },
+  calendarCard: { ...group, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
+  monthHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  monthButton: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  monthTitle: { color: notes.label, fontSize: 16, fontWeight: '600' },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  weekday: { width: '14.2857%', height: 28, textAlign: 'center', textAlignVertical: 'center', color: notes.tertiary, fontSize: 12, fontWeight: '600' },
-  dayCell: { width: '14.2857%', padding: 2, alignItems: 'center' },
-  day: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21 },
-  today: {},
+  weekday: { width: '14.2857%', height: 22, textAlign: 'center', textAlignVertical: 'center', color: notes.tertiary, fontSize: 11, fontWeight: '600' },
+  dayCell: { width: '14.2857%', alignItems: 'center', paddingVertical: 1 },
+  day: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
   selectedDay: { backgroundColor: notes.accent },
-  dayNumber: { color: notes.label, fontSize: 16 },
+  dayNumber: { color: notes.label, fontSize: 15 },
+  todayNumber: { color: notes.accent, fontWeight: '700' },
   outsideMonthNumber: { color: notes.tertiary },
-  selectedDayNumber: { color: notes.onAccent, fontWeight: '600' },
-  entryDot: { width: 5, height: 5, marginTop: 2, borderRadius: 3, backgroundColor: 'transparent' },
-  entryDotActive: { width: 5, height: 5, borderRadius: 3, backgroundColor: notes.accent },
-  entryDotSelected: { backgroundColor: notes.onAccent },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm, minHeight: 20 },
-  legendText: { flex: 1, color: notes.secondary, fontSize: 12 },
+  selectedDayNumber: { color: notes.onAccent, fontWeight: '700' },
+  entryDot: { width: 4, height: 4, marginTop: 2, alignSelf: 'center', borderRadius: 2, backgroundColor: 'transparent' },
+  entryDotActive: { backgroundColor: notes.accent },
+  weekStrip: { ...group, flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 2 },
+  weekArrow: { width: 26, height: 44, alignItems: 'center', justifyContent: 'center' },
+  weekDay: { flex: 1, alignItems: 'center' },
+  weekdayCompact: { color: notes.tertiary, fontSize: 10, fontWeight: '600', marginBottom: 2 },
   resultsCard: { ...group, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   sectionTitle: { color: notes.label, fontSize: 17, fontWeight: '600' },
   resultRow: {

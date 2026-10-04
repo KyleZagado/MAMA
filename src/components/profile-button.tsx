@@ -16,6 +16,7 @@ export function ProfileButton({ session }: { session: Session }) {
   return (
     <Pressable
       onPress={() => router.push('/profile')}
+      hitSlop={4}
       style={({ pressed }) => [styles.avatar, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel="Open profile"
@@ -31,17 +32,15 @@ export function ProfileButton({ session }: { session: Session }) {
 
 const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   avatar: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    borderRadius: 16,
+    borderRadius: 18,
     backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   image: { width: '100%', height: '100%' },
-  initial: { color: colors.primary, fontSize: 17, fontWeight: '700' },
+  initial: { color: colors.primary, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.75 },
 }));

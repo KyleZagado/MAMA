@@ -6,7 +6,7 @@ import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ProfileButton } from '../components/profile-button';
+import { PageHeader } from '../components/page-header';
 import { RoundButton } from '../components/round-button';
 import { WorkoutScheduler } from '../components/workout-scheduler';
 import { EXERCISES, MUSCLE_GROUPS, type MuscleGroup } from '../constants/exercises';
@@ -115,27 +115,17 @@ export function Fitness({ session }: { session: Session }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.brand}>mama</Text>
-            <Text style={styles.title}>Fitness</Text>
-          </View>
-          <ProfileButton session={session} />
-        </View>
+        <PageHeader session={session} title="Fitness" />
 
         <Pressable
           onPress={() => router.push('/activity')}
           style={({ pressed }) => [styles.record, pressed && styles.pressed]}
           accessibilityRole="button"
+          accessibilityLabel="Record an activity: run, walk or ride"
         >
-          <View style={styles.recordIcon}>
-            <Ionicons name="navigate" size={22} color={colors.heroBackground} />
-          </View>
-          <View style={styles.flex}>
-            <Text style={styles.recordTitle}>Record an activity</Text>
-            <Text style={styles.recordMeta}>Run, walk or ride with distance, steps and calories</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.heroTextMuted} />
+          <Ionicons name="navigate" size={16} color={colors.primary} />
+          <Text style={[styles.flex, styles.recordTitle]}>Record activity</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textSubtle} />
         </Pressable>
 
         <View style={styles.tabs}>
@@ -148,7 +138,7 @@ export function Fitness({ session }: { session: Session }) {
               accessibilityState={{ selected: activeTab === tab }}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextSelected]}>
-                {tab === 'schedule' ? 'Schedule' : 'History & exercises'}
+                {tab === 'schedule' ? 'Schedule' : 'History'}
               </Text>
             </Pressable>
           ))}
@@ -164,14 +154,14 @@ export function Fitness({ session }: { session: Session }) {
         </View>
         <View style={styles.card}>
           <View style={styles.monthRow}>
-            <RoundButton icon="chevron-back" label="Previous month" size={36} onPress={() => changeMonth(-1)} />
+            <RoundButton icon="chevron-back" label="Previous month" size={30} iconSize={16} color={colors.textMuted} onPress={() => changeMonth(-1)} />
             <View style={styles.monthTitleBlock}>
               <Text style={styles.monthTitle}>{monthTitle}</Text>
               <Text style={styles.monthMeta}>
                 {daysWithLogs.size} workout {daysWithLogs.size === 1 ? 'day' : 'days'}
               </Text>
             </View>
-            <RoundButton icon="chevron-forward" label="Next month" size={36} onPress={() => changeMonth(1)} />
+            <RoundButton icon="chevron-forward" label="Next month" size={30} iconSize={16} color={colors.textMuted} onPress={() => changeMonth(1)} />
           </View>
 
           <View style={styles.grid}>
@@ -226,7 +216,7 @@ export function Fitness({ session }: { session: Session }) {
               accessibilityLabel={`${info.label}, ${formatKm(activity.distance_m)} kilometers`}
             >
               <View style={[styles.logIcon, styles.activityIcon]}>
-                <Ionicons name={info.icon} size={20} color={colors.accent} />
+                <Ionicons name={info.icon} size={16} color={colors.accent} />
               </View>
               <View style={styles.flex}>
                 <Text style={styles.rowTitle}>{info.label}</Text>
@@ -249,7 +239,7 @@ export function Fitness({ session }: { session: Session }) {
               accessibilityLabel={`Remove ${log.exercise_name}`}
             >
               <View style={styles.logIcon}>
-                <Ionicons name="barbell-outline" size={20} color={colors.primary} />
+                <Ionicons name="barbell-outline" size={16} color={colors.primary} />
               </View>
               <View style={styles.flex}>
                 <Text style={styles.rowTitle} numberOfLines={1}>
@@ -273,7 +263,7 @@ export function Fitness({ session }: { session: Session }) {
         </View>
 
         <View style={styles.search}>
-          <Ionicons name="search" size={20} color={colors.textSubtle} />
+          <Ionicons name="search" size={16} color={colors.textSubtle} />
           <TextInput
             value={search}
             onChangeText={setSearch}
@@ -284,7 +274,7 @@ export function Fitness({ session }: { session: Session }) {
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch('')} hitSlop={8} accessibilityLabel="Clear search">
-              <Ionicons name="close-circle" size={18} color={colors.textSubtle} />
+              <Ionicons name="close-circle" size={16} color={colors.textSubtle} />
             </Pressable>
           )}
         </View>
@@ -335,7 +325,7 @@ export function Fitness({ session }: { session: Session }) {
                   {exercise.group} · {exercise.equipment}
                 </Text>
               </View>
-              <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
+              <Ionicons name="add" size={20} color={colors.primary} />
             </Pressable>
           ))
         ) : (
@@ -362,59 +352,45 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     paddingBottom: 56,
   },
   pressed: { opacity: 0.7 },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  brand: { color: colors.textMuted, fontSize: 13 },
-  title: { color: colors.text, fontSize: 26, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
   record: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    borderRadius: 24,
-    backgroundColor: colors.heroBackground,
+    gap: spacing.sm,
+    minHeight: 40,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  recordIcon: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 22,
-    backgroundColor: colors.accent,
-  },
-  recordTitle: { color: colors.heroText, fontSize: 16, fontWeight: '800' },
-  recordMeta: { color: colors.heroTextMuted, fontSize: 12, marginTop: 2 },
+  recordTitle: { color: colors.text, fontSize: 14, fontWeight: '600' },
   tabs: {
     flexDirection: 'row',
-    padding: 4,
+    padding: 2,
     marginBottom: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.sm + 2,
     backgroundColor: colors.surfaceAlt,
   },
-  tab: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
+  tab: { flex: 1, minHeight: 30, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   tabSelected: { backgroundColor: colors.surface, elevation: 1 },
-  tabText: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
+  tabText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
   tabTextSelected: { color: colors.primary },
   historyHeading: { marginTop: spacing.sm, marginBottom: spacing.md },
   historyMeta: { color: colors.textMuted, fontSize: 13, marginTop: spacing.xs },
   activityIcon: { backgroundColor: colors.accentSoft },
   card: {
-    padding: spacing.lg,
-    borderRadius: 24,
+    padding: spacing.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   monthTitleBlock: { alignItems: 'center' },
-  monthTitle: { color: colors.text, fontSize: 17, fontWeight: '800' },
+  monthTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   monthMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.lg },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.md },
   weekday: {
     width: '14.2857%',
     textAlign: 'center',
@@ -423,9 +399,9 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     fontWeight: '700',
     marginBottom: spacing.sm,
   },
-  cell: { width: '14.2857%', height: 50, alignItems: 'center', justifyContent: 'center' },
-  day: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18 },
-  dayToday: { borderWidth: 1.5, borderColor: colors.primary },
+  cell: { width: '14.2857%', height: 42, alignItems: 'center', justifyContent: 'center' },
+  day: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
+  dayToday: { borderWidth: 1, borderColor: colors.primary },
   daySelected: { backgroundColor: colors.heroBackground, borderColor: colors.heroBackground },
   dayText: { color: colors.text, fontSize: 14, fontWeight: '600' },
   dayTextSelected: { color: colors.onPrimary },
@@ -439,16 +415,16 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
   },
-  sectionTitle: { color: colors.text, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
+  sectionTitle: { color: colors.text, fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
   sectionMeta: { color: colors.textMuted, fontSize: 13 },
-  logRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
-  divider: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  logRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10 },
+  divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   logIcon: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.primarySoft,
   },
   logValue: { color: colors.text, fontSize: 14, fontWeight: '700' },
@@ -459,29 +435,25 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   search: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    minHeight: 48,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  searchInput: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: spacing.md },
-  chipScroll: { marginHorizontal: -22, marginVertical: spacing.md, flexGrow: 0 },
-  chipRow: { paddingHorizontal: 22, gap: spacing.sm },
-  chip: {
+    gap: spacing.sm,
     minHeight: 36,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
   },
-  chipSelected: { backgroundColor: colors.heroBackground, borderColor: colors.heroBackground },
-  chipText: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
-  chipTextSelected: { color: colors.onPrimary },
-  exerciseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 14 },
+  searchInput: { flex: 1, color: colors.text, fontSize: 15, paddingVertical: 6 },
+  chipScroll: { marginHorizontal: -22, marginVertical: spacing.sm, flexGrow: 0 },
+  chipRow: { paddingHorizontal: 22, gap: 6 },
+  chip: {
+    minHeight: 28,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
+  },
+  chipSelected: { backgroundColor: colors.primarySoft },
+  chipText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
+  chipTextSelected: { color: colors.primary },
+  exerciseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10 },
   error: { color: colors.danger, fontSize: 13, marginTop: spacing.lg },
 }));
