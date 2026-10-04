@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { randomUUID } from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import { Link, router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable,
   ScrollView, StyleSheet, Switch, Text, TextInput, View,
@@ -23,11 +23,12 @@ import {
 import { fromDateKey, timeKeyToDate, toDateKey, toTimeKey } from '../lib/dates';
 import { removeStoredPhoto, storedPhotoUri, storePhoto } from '../lib/stored-photos';
 import { decodeTaskRepeat, type TaskRepeat } from '../lib/task-calendar';
+import { buildTodoLists } from '../lib/todo-lists';
 
 type Photo = { name: string; uri: string; persisted: boolean };
 
-export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
-  session: Session; taskId?: string; initialDate?: string; occurrenceDate?: string;
+export function TaskForm({ session, taskId, initialDate, occurrenceDate, initialList }: {
+  session: Session; taskId?: string; initialDate?: string; occurrenceDate?: string; initialList?: string;
 }) {
   const [original, setOriginal] = useState<Todo | null>(null);
   const [title, setTitle] = useState('');
@@ -49,7 +50,7 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
   const [location, setLocation] = useState('');
   const [scheduled, setScheduled] = useState(true);
   const [favorite, setFavorite] = useState(false);
-  const [listName, setListName] = useState('');
+  const [listName, setListName] = useState(() => (taskId ? '' : initialList ?? ''));
   const [project, setProject] = useState('');
   const [lists, setLists] = useState<string[]>([]);
   const [estimate, setEstimate] = useState('');
@@ -62,6 +63,7 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
   const [isPicking, setIsPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const busy = useRef(false);
+  const listChoices = useMemo(() => buildTodoLists(lists, []).map((item) => item.name), [lists]);
 
   useEffect(() => {
     let active = true;
@@ -247,7 +249,7 @@ export function TaskForm({ session, taskId, initialDate, occurrenceDate }: {
               <FieldLabel>MY LIST</FieldLabel>
               <ChipRow>
                 <Chip label="No list" selected={!listName} onPress={() => setListName('')} />
-                {lists.map((name) => <Chip key={name} label={name} selected={listName === name} onPress={() => setListName(name)} />)}
+                {listChoices.map((name) => <Chip key={name} label={name} selected={listName === name} onPress={() => setListName(name)} />)}
               </ChipRow>
               <TextInput value={listName} onChangeText={setListName} maxLength={60} style={formStyles.input} placeholder="Choose above or create a named list" accessibilityLabel="Task list" />
               <FieldLabel>PROJECT (OPTIONAL)</FieldLabel>

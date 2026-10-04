@@ -222,6 +222,14 @@ export async function createTaskList(db: SQLiteDatabase, name: string) {
   await db.runAsync('INSERT INTO task_lists (name) VALUES (?)', trimmed);
 }
 
+/** Removes a saved list; its tasks stay but no longer belong to that list. */
+export async function deleteTaskList(db: SQLiteDatabase, name: string) {
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.runAsync('UPDATE tasks SET list_name = NULL, updated_at = updated_at + 1 WHERE list_name = ?', name);
+    await tx.runAsync('DELETE FROM task_lists WHERE name = ?', name);
+  });
+}
+
 export type TaskAction =
   | { type: 'status'; status: TodoStatus }
   | { type: 'delete' }

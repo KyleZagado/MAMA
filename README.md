@@ -130,7 +130,15 @@ in the signed-in user's local database.
 
 ## Core To-Do tools
 
-The To-Do home keeps its quick task composer. Choose **New detailed task** for
+The To-Do home works like iPhone Reminders: a search bar, **Today** and **All**
+cards with open-task counts, and **My lists** — Work, Personal, Household,
+Health, plus your own lists (tap **New list**; long-press a custom list to
+delete it, which keeps its tasks). Each list is its own to-do list with Overdue,
+Today, Upcoming, No date, and a collapsible Completed section; Today keeps the
+priority/time sort and the daily rhythm ring. A task belongs to its named list,
+or to its category when it has no list. The round **+** button at the bottom
+right opens the task editor, pre-assigned to the open list. The header calendar
+and options icons open the task calendar and **Manage tasks**. The editor supports
 title, description/notes, due date and due time, start/end times, all-day mode,
 Low/Medium/High priority, To Do/In Progress/Done status, checklist items, photo
 attachments, HTTP/HTTPS links, tags, custom categories, color labels, manually
@@ -145,7 +153,7 @@ archive/unarchive, and delete actions on the last saved version. Duplicates
 preserve metadata and photos but reset status, checklist completion, and actual
 time spent.
 
-Open **Manage tasks / Bulk / Drag** for Day, All tasks, or Archived views.
+Open **Manage tasks** (header options icon) for Day, All tasks, or Archived views.
 Use the checkbox to complete/uncomplete; use **Edit** to set In Progress.
 **Move / reschedule** works on any date and preserves task times and details.
 Drag the grip to one of the seven visible date cells to move a task, or drop it
@@ -165,7 +173,7 @@ tracking or an automatic timer.
 
 ## Task lists and grouping
 
-Open **Lists / Group tasks** from To-Do or Manage Tasks for All tasks, Today,
+Open **Lists / Group tasks** from Manage Tasks for All tasks, Today,
 Tomorrow, Upcoming, Overdue, Completed, Unscheduled, Favorites, and My Lists.
 Today, Tomorrow, Upcoming, and Overdue show unfinished tasks; the other views
 can include completed tasks. Upcoming starts tomorrow. Overdue includes passed

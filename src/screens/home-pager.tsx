@@ -106,7 +106,7 @@ export function HomePager({ session }: { session: Session }) {
 
   const pages = new Map<HomePageId, React.ReactNode>([
     ['finance', <Dashboard key="finance" session={session} />],
-    ['todos', <Todos key="todos" session={session} />],
+    ['todos', <Todos key="todos" session={session} isVisible={pageOrder[page] === 'todos'} />],
     ['consumption', <Consumption key="consumption" session={session} />],
     ['fitness', <Fitness key="fitness" session={session} />],
     ['fasting', <Fasting key="fasting" session={session} />],

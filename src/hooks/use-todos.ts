@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { getDatabase } from '../database';
 import { getTaskUndo, listTodos, type Todo } from '../database/todos';
 
-export function useTodos(userId: string) {
+export function useTodos(userId: string, includeUnscheduled = false) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [undo, setUndo] = useState<string | null>(null);
@@ -16,7 +16,7 @@ export function useTodos(userId: string) {
     setIsLoading(true);
     try {
       const db = await getDatabase(userId);
-      const [rows, action] = await Promise.all([listTodos(db), getTaskUndo(db)]);
+      const [rows, action] = await Promise.all([listTodos(db, false, true, includeUnscheduled), getTaskUndo(db)]);
       if (token !== request.current) return;
       setTodos(rows);
       setUndo(action?.label ?? null);
@@ -26,7 +26,7 @@ export function useTodos(userId: string) {
     } finally {
       if (token === request.current) setIsLoading(false);
     }
-  }, [userId]);
+  }, [includeUnscheduled, userId]);
 
   useFocusEffect(
     useCallback(() => {
