@@ -129,17 +129,6 @@ export function Fitness({ session }: { session: Session }) {
           }
         />
 
-        <Pressable
-          onPress={() => router.push('/activity')}
-          style={({ pressed }) => [styles.record, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Record an activity: run, walk or ride"
-        >
-          <Ionicons name="navigate" size={16} color={colors.primary} />
-          <Text style={[styles.flex, styles.recordTitle]}>Record activity</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.textSubtle} />
-        </Pressable>
-
         <View style={styles.tabs}>
           {(['schedule', 'history'] as const).map((tab) => (
             <Pressable
@@ -313,6 +302,18 @@ export function Fitness({ session }: { session: Session }) {
           </>
         )}
       </ScrollView>
+
+      <View style={styles.recordBar} pointerEvents="box-none">
+        <Pressable
+          onPress={() => router.push('/activity')}
+          style={({ pressed }) => [styles.recordButton, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Record an activity: run, walk or ride"
+        >
+          <Ionicons name="navigate" size={18} color={colors.onPrimary} />
+          <Text style={styles.recordText}>Record Activity</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -326,22 +327,25 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: 22,
     paddingTop: spacing.md,
-    paddingBottom: 56,
+    paddingBottom: 130,
   },
   pressed: { opacity: 0.7 },
-  record: {
+  recordBar: { position: 'absolute', left: 22, right: 22, bottom: 38 },
+  recordButton: {
+    minHeight: 54,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    backgroundColor: colors.heroBackground,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
-  recordTitle: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  recordText: { color: colors.onPrimary, fontSize: 15, fontWeight: '700' },
   tabs: {
     flexDirection: 'row',
     padding: 2,

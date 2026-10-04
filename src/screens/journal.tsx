@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -21,7 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PageHeader } from '../components/page-header';
 import { PickerField } from '../components/picker-field';
-import { darkColors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
+import { darkColors, lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import {
   deleteJournalEntry,
   draftFromEntry,
@@ -102,6 +103,10 @@ function timestampLabel(timestamp: number) {
   });
 }
 
+function timeLabel(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
 function timeAsDate(time: string) {
   const [hour, minute] = time.split(':').map(Number);
   const date = new Date();
@@ -145,13 +150,14 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
   const [moodFilter, setMoodFilter] = useState<JournalMood | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [filterBySelectedDate, setFilterBySelectedDate] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderTime, setReminderTime] = useState('20:00');
   const [isSavingReminder, setIsSavingReminder] = useState(false);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [openedAt, setOpenedAt] = useState(0);
 
   const range = useMemo(() => monthRange(cursor.year, cursor.month), [cursor]);
   const cells = useMemo(() => {
@@ -161,10 +167,6 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
       ) + 1;
     return Array.from({ length: count }, (_, index) => addDaysToKey(range.from, index));
   }, [range]);
-  const weekDays = useMemo(() => {
-    const start = addDaysToKey(selectedDate, -((fromDateKey(selectedDate).getDay() + 6) % 7));
-    return Array.from({ length: 7 }, (_, index) => addDaysToKey(start, index));
-  }, [selectedDate]);
   const entriesByDate = useMemo(
     () => new Map(entries.map((item) => [item.entry_date, item])),
     [entries],
@@ -179,14 +181,14 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
         query,
         mood: moodFilter,
         tag: tagFilter,
-        date: filterBySelectedDate ? selectedDate : null,
+        date: null,
         favoritesOnly: showFavoritesOnly,
       }),
-    [entries, filterBySelectedDate, moodFilter, query, selectedDate, showFavoritesOnly, tagFilter],
+    [entries, moodFilter, query, showFavoritesOnly, tagFilter],
   );
   const shouldShowResults =
     showFavoritesOnly ||
-    Boolean(query.trim() || moodFilter || tagFilter || filterBySelectedDate);
+    Boolean(query.trim() || moodFilter || tagFilter);
   const canEditEntry = entryReady && !isLoading;
 
   const persistDraft = useCallback(async (date: string, snapshot: JournalDraft, revision: number) => {
@@ -363,12 +365,35 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
     setCursor({ year: next.getFullYear(), month: next.getMonth() });
   }
 
+  async function openEditor(date: string) {
+    setCalendarOpen(false);
+    await selectDate(date);
+    if (selectedDateRef.current === date) {
+      setOpenedAt(new Date().getTime());
+      setEditorOpen(true);
+    }
+  }
+
+  const closeEditor = useCallback(() => {
+    Keyboard.dismiss();
+    setEditorOpen(false);
+    void flushCurrentDraft();
+  }, [flushCurrentDraft]);
+
+  useEffect(() => {
+    if (!editorOpen || !isVisible) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeEditor();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [closeEditor, editorOpen, isVisible]);
+
   function clearFilters() {
     setQuery('');
     setMoodFilter(null);
     setTagFilter(null);
     setShowFavoritesOnly(false);
-    setFilterBySelectedDate(false);
   }
 
   function addTag(value: string) {
@@ -530,6 +555,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
       setDraft(nextDraft);
       setEntries((current) => current.filter((item) => item.entry_date !== target.entry_date));
       dirtyRef.current = false;
+      setEditorOpen(false);
       setSaveStatus('Changes save automatically');
       setError(null);
     } catch (cause: unknown) {
@@ -539,8 +565,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
 
   const selectedEntry = entriesByDate.get(selectedDate) ?? entry;
   const selectedDateKey = selectedDate;
-  const currentDate = fromDateKey(selectedDate);
-  const visibleEntries = shouldShowResults ? filteredEntries : [];
+  const visibleEntries = shouldShowResults ? filteredEntries : entries;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -553,6 +578,8 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {!editorOpen && (
+          <>
           <PageHeader
             session={session}
             title="Journal"
@@ -612,11 +639,6 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                   selected={showFavoritesOnly}
                   onPress={() => setShowFavoritesOnly((value) => !value)}
                 />
-                <FilterButton
-                  label="This day"
-                  selected={filterBySelectedDate}
-                  onPress={() => setFilterBySelectedDate((value) => !value)}
-                />
                 {JOURNAL_MOODS.map((mood) => (
                   <FilterButton
                     key={mood.id}
@@ -638,7 +660,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
             </View>
           )}
 
-          {calendarOpen ? (
+          {calendarOpen && (
             <View style={styles.calendarCard}>
               <View style={styles.monthHeader}>
                 <Pressable
@@ -672,63 +694,29 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                     isToday={dateKey === today}
                     hasEntry={entriesByDate.has(dateKey)}
                     disabled={isLoading}
-                    onPress={() => {
-                      setCalendarOpen(false);
-                      void selectDate(dateKey);
-                    }}
+                    onPress={() => void openEditor(dateKey)}
                   />
                 ))}
               </View>
             </View>
-          ) : (
-            <View style={styles.weekStrip}>
-              <Pressable
-                onPress={() => void selectDate(addDaysToKey(selectedDate, -7))}
-                disabled={isLoading}
-                style={styles.weekArrow}
-                accessibilityRole="button"
-                accessibilityLabel="Previous week"
-              >
-                <Ionicons name="chevron-back" size={18} color={notes.accent} />
-              </Pressable>
-              {weekDays.map((dateKey, index) => (
-                <View key={dateKey} style={styles.weekDay}>
-                  <Text style={styles.weekdayCompact}>{WEEKDAYS[index]}</Text>
-                  <DayButton
-                    dateKey={dateKey}
-                    selected={dateKey === selectedDate}
-                    isToday={dateKey === today}
-                    hasEntry={entriesByDate.has(dateKey)}
-                    disabled={isLoading}
-                    compact
-                    onPress={() => void selectDate(dateKey)}
-                  />
-                </View>
-              ))}
-              <Pressable
-                onPress={() => void selectDate(addDaysToKey(selectedDate, 7))}
-                disabled={isLoading}
-                style={styles.weekArrow}
-                accessibilityRole="button"
-                accessibilityLabel="Next week"
-              >
-                <Ionicons name="chevron-forward" size={18} color={notes.accent} />
-              </Pressable>
-            </View>
           )}
 
-          {shouldShowResults && (
-            <View style={styles.resultsCard}>
+          <View style={styles.resultsCard}>
               <Text style={styles.sectionTitle}>
-                {showFavoritesOnly ? 'Favorites' : 'Search results'}
+                {shouldShowResults
+                  ? showFavoritesOnly
+                    ? 'Favorites'
+                    : 'Search results'
+                  : `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`}
               </Text>
               {visibleEntries.length ? (
                 visibleEntries.map((item) => (
                   <Pressable
                     key={item.id}
-                    onPress={() => void selectDate(item.entry_date)}
-                    style={styles.resultRow}
+                    onPress={() => void openEditor(item.entry_date)}
+                    style={({ pressed }) => [styles.resultRow, pressed && styles.rowPressed]}
                     accessibilityRole="button"
+                    accessibilityLabel={`Open journal for ${dateLabel(item.entry_date)}`}
                   >
                     <View style={styles.resultDate}>
                       <Text style={styles.resultDateDay}>
@@ -743,9 +731,14 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                         {item.body.trim() || 'Photo memory'}
                       </Text>
                       <Text style={styles.resultMeta} numberOfLines={1}>
-                        {[moodLabel(item.mood), item.tags.map((tag) => `#${tag}`).join(' ')]
+                        {[
+                          fromDateKey(item.entry_date).toLocaleDateString(undefined, { weekday: 'short' }),
+                          timeLabel(item.created_at),
+                          moodLabel(item.mood),
+                          item.tags.map((tag) => `#${tag}`).join(' '),
+                        ]
                           .filter(Boolean)
-                          .join(' · ') || 'Journal entry'}
+                          .join(' · ')}
                       </Text>
                     </View>
                     {item.photos.length > 0 && (
@@ -757,17 +750,30 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
                   </Pressable>
                 ))
               ) : (
-                <Text style={styles.emptyText}>No entries match those filters.</Text>
+                <Text style={styles.emptyText}>
+                  {shouldShowResults
+                    ? 'No entries match those filters.'
+                    : 'No journals yet. Tap Write New Journal to start.'}
+                </Text>
               )}
-            </View>
+          </View>
+          </>
           )}
 
+          {editorOpen && (
           <View style={styles.entryCard}>
             <View style={styles.noteToolbar}>
-              <View style={styles.toolbarLeft}>
-                <Ionicons name="folder-outline" size={18} color={notes.accent} />
+              <Pressable
+                onPress={closeEditor}
+                hitSlop={8}
+                style={styles.toolbarLeft}
+                accessibilityRole="button"
+                accessibilityLabel="Back to journal list"
+              >
+                <Ionicons name="chevron-back" size={22} color={notes.accent} />
                 <Text style={styles.toolbarText}>Journal</Text>
-              </View>
+              </Pressable>
+              <View style={styles.flex} />
               <Pressable
                 onPress={() => updateDraft({ favorite: !draft.favorite })}
                 disabled={!canEditEntry || (!selectedEntry && !hasJournalContent(draft))}
@@ -804,9 +810,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
             </View>
 
             <Text style={styles.entrySubheading}>
-              {selectedEntry
-                ? timestampLabel(selectedEntry.updated_at)
-                : currentDate.toLocaleDateString(undefined, { dateStyle: 'long' })}
+              {timestampLabel(selectedEntry ? selectedEntry.updated_at : openedAt)}
             </Text>
             <Text style={styles.entryDate}>{dateLabel(selectedDateKey)}</Text>
             <TextInput
@@ -945,7 +949,9 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
               <Text style={styles.updatedAt}>Created {timestampLabel(selectedEntry.created_at)}</Text>
             )}
           </View>
+          )}
 
+          {!editorOpen && (
           <View style={styles.reminderCard}>
             <View style={styles.reminderTopRow}>
               <View style={styles.reminderIcon}>
@@ -976,6 +982,7 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
               <Text style={styles.errorText} accessibilityLiveRegion="polite">{reminderMessage}</Text>
             )}
           </View>
+          )}
 
           {error && (
             <View style={styles.errorCard}>
@@ -992,6 +999,20 @@ export function Journal({ session, isVisible = true }: { session: Session; isVis
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {!editorOpen && (
+        <View style={styles.writeBar} pointerEvents="box-none">
+          <Pressable
+            onPress={() => void openEditor(toDateKey(new Date()))}
+            style={({ pressed }) => [styles.writeButton, pressed && styles.rowPressed]}
+            accessibilityRole="button"
+            accessibilityHint="Opens today's journal entry"
+          >
+            <Ionicons name="create-outline" size={19} color={colors.onPrimary} />
+            <Text style={styles.writeText}>Write New Journal</Text>
+          </Pressable>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -1004,7 +1025,6 @@ function DayButton({
   disabled,
   onPress,
   muted = false,
-  compact = false,
 }: {
   dateKey: string;
   selected: boolean;
@@ -1013,13 +1033,12 @@ function DayButton({
   disabled: boolean;
   onPress: () => void;
   muted?: boolean;
-  compact?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={compact ? undefined : styles.dayCell}
+      style={styles.dayCell}
       accessibilityRole="button"
       accessibilityLabel={`${dateLabel(dateKey)}${hasEntry ? ', journal entry' : ', no entry'}`}
       accessibilityState={{ selected }}
@@ -1101,7 +1120,7 @@ const styles = createThemedStyleSheet((colors) => {
     alignSelf: 'center',
     paddingHorizontal: 22,
     paddingTop: spacing.md,
-    paddingBottom: 64,
+    paddingBottom: 130,
     gap: spacing.md,
   },
   header: { marginBottom: 0 },
@@ -1162,10 +1181,6 @@ const styles = createThemedStyleSheet((colors) => {
   selectedDayNumber: { color: notes.onAccent, fontWeight: '700' },
   entryDot: { width: 4, height: 4, marginTop: 2, alignSelf: 'center', borderRadius: 2, backgroundColor: 'transparent' },
   entryDotActive: { backgroundColor: notes.accent },
-  weekStrip: { ...group, flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 2 },
-  weekArrow: { width: 26, height: 44, alignItems: 'center', justifyContent: 'center' },
-  weekDay: { flex: 1, alignItems: 'center' },
-  weekdayCompact: { color: notes.tertiary, fontSize: 10, fontWeight: '600', marginBottom: 2 },
   resultsCard: { ...group, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   sectionTitle: { color: notes.label, fontSize: 17, fontWeight: '600' },
   resultRow: {
@@ -1182,9 +1197,26 @@ const styles = createThemedStyleSheet((colors) => {
   resultTitle: { color: notes.label, fontSize: 16, fontWeight: '600' },
   resultMeta: { color: notes.secondary, fontSize: 14, marginTop: 2 },
   emptyText: { color: notes.secondary, fontSize: 15, paddingVertical: spacing.sm },
+  rowPressed: { opacity: 0.6 },
+  writeBar: { position: 'absolute', left: 22, right: 22, bottom: 38 },
+  writeButton: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.heroBackground,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  writeText: { color: colors.onPrimary, fontSize: 15, fontWeight: '700' },
   entryCard: { ...group, gap: spacing.md, paddingHorizontal: 18, paddingTop: spacing.sm, paddingBottom: spacing.lg },
   noteToolbar: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  toolbarLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  toolbarLeft: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: -6 },
   toolbarText: { color: notes.accent, fontSize: 17 },
   doneButton: { minHeight: 40, justifyContent: 'center', paddingLeft: spacing.xs },
   doneText: { color: notes.accent, fontSize: 17, fontWeight: '600' },

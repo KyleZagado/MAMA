@@ -163,6 +163,7 @@ export function Profile({ session }: ProfileProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [homePageOrder, setHomePageOrder] = useState<HomePageId[]>([...DEFAULT_HOME_PAGE_ORDER]);
   const [hiddenHomePages, setHiddenHomePages] = useState<HomePageId[]>([]);
+  const [isHomePagesOpen, setIsHomePagesOpen] = useState(false);
   const [isLoadingHomePageOrder, setIsLoadingHomePageOrder] = useState(true);
   const [isSavingHomePageOrder, setIsSavingHomePageOrder] = useState(false);
   const [homePageOrderError, setHomePageOrderError] = useState<string | null>(null);
@@ -443,27 +444,45 @@ export function Profile({ session }: ProfileProps) {
 
           <View style={styles.card}>
             <View style={styles.homePagesHeading}>
-              <View style={styles.flex}>
-                <Text style={styles.sectionTitle}>Home page sequence</Text>
-                <Text style={styles.hint}>
-                  Reorder pages or tap the eye to hide one.
-                </Text>
-              </View>
               <Pressable
-                onPress={resetHomePageOrder}
-                disabled={isSavingHomePageOrder || isLoadingHomePageOrder}
-                style={({ pressed }) => [
-                  styles.resetOrderButton,
-                  (isSavingHomePageOrder || isLoadingHomePageOrder) && styles.disabled,
-                  pressed && styles.pressed,
-                ]}
+                onPress={() => setIsHomePagesOpen((open) => !open)}
+                style={({ pressed }) => [styles.homePagesToggle, pressed && styles.pressed]}
                 accessibilityRole="button"
-                accessibilityLabel="Reset home page order"
+                accessibilityLabel="Home page sequence"
+                accessibilityHint={isHomePagesOpen ? 'Hides the page list' : 'Shows the page list'}
+                accessibilityState={{ expanded: isHomePagesOpen }}
               >
-                <Text style={styles.resetOrderText}>Reset</Text>
+                <View style={styles.flex}>
+                  <Text style={styles.sectionTitle}>Home page sequence</Text>
+                  <Text style={styles.hint}>
+                    {isHomePagesOpen
+                      ? 'Reorder pages or tap the eye to hide one.'
+                      : `${HOME_PAGES.length - hiddenHomePages.length} of ${HOME_PAGES.length} pages shown`}
+                  </Text>
+                </View>
+                <Ionicons
+                  name={isHomePagesOpen ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textMuted}
+                />
               </Pressable>
+              {isHomePagesOpen && (
+                <Pressable
+                  onPress={resetHomePageOrder}
+                  disabled={isSavingHomePageOrder || isLoadingHomePageOrder}
+                  style={({ pressed }) => [
+                    styles.resetOrderButton,
+                    (isSavingHomePageOrder || isLoadingHomePageOrder) && styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Reset home page order"
+                >
+                  <Text style={styles.resetOrderText}>Reset</Text>
+                </Pressable>
+              )}
             </View>
-            {homePageOrder.map((pageId, index) => {
+            {isHomePagesOpen && homePageOrder.map((pageId, index) => {
               const page = HOME_PAGES.find((item) => item.id === pageId);
               if (!page) return null;
               const disabled = isLoadingHomePageOrder || isSavingHomePageOrder;
@@ -529,10 +548,10 @@ export function Profile({ session }: ProfileProps) {
                 </View>
               );
             })}
-            {isLoadingHomePageOrder && (
+            {isHomePagesOpen && isLoadingHomePageOrder && (
               <Text style={styles.hint} accessibilityLiveRegion="polite">Loading home page order…</Text>
             )}
-            {isSavingHomePageOrder && (
+            {isHomePagesOpen && isSavingHomePageOrder && (
               <Text style={styles.hint} accessibilityLiveRegion="polite">Saving sequence…</Text>
             )}
             {homePageOrderError && (
@@ -789,7 +808,8 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
     borderColor: colors.border,
   },
   sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  homePagesHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
+  homePagesHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  homePagesToggle: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 40 },
   appearanceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   appearanceCopy: { flex: 1 },
   homePageRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

@@ -41,11 +41,13 @@ Swipe to **Daily Journal** to write in a clean page styled after iPhone Notes
 (white or black sheets, yellow accents, system font) in both light and dark
 mode. One entry is kept per day. Entries auto-save while
 you type, with their date and creation/update times recorded automatically.
-The page opens straight to the entry, with a compact week strip above it. Tap
-the calendar icon for the full month, or the search icon for search and filter
-chips; dotted dates contain saved entries. The journal supports one mood per entry (Great, Good, Okay, Sad,
+The page opens to a list of your journals with their dates; tap one to open it.
+Tap **Write New Journal** at the bottom to open today's entry with the current
+date and time (or continue it if you already wrote today). Use the back arrow
+to return to the list. Tap the calendar icon for the full month (dotted dates
+contain saved entries), or the search icon for search and filter chips. The journal supports one mood per entry (Great, Good, Okay, Sad,
 or Angry), tags, favorites, and up to five photos, including photo-only entries.
-Search words or phrases and combine mood, tag, date, and Favorites filters.
+Search words or phrases and combine mood, tag, and Favorites filters.
 A daily reminder can be enabled and assigned a time in the
 journal page; notification permission is required. Android Expo Go does not
 support this app's reminder setup, so use an Android development build for
