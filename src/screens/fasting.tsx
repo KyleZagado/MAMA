@@ -597,41 +597,43 @@ export function Fasting({ session }: { session: Session }) {
           </View>
         </View>
 
-        <View style={styles.sectionHeading}>
-          <Text style={styles.sectionTitle}>Choose a protocol</Text>
-          <Text style={styles.sectionMeta}>Select a plan to get started</Text>
+        <View style={styles.protocolHeading}>
+          <Text style={styles.protocolLabel}>PROTOCOL</Text>
+          {active && <Text style={styles.protocolLocked}>Locked during fast</Text>}
         </View>
-        <View style={styles.protocolGrid}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.protocolRow}
+          style={styles.protocolScroll}
+        >
           {PROTOCOLS.map((protocol) => {
-            const selectedProtocol = selectedId === protocol.id;
+            const isSelected = selectedId === protocol.id;
             return (
               <Pressable
                 key={protocol.id}
                 onPress={() => chooseProtocol(protocol)}
                 disabled={Boolean(active)}
                 style={({ pressed }) => [
-                  styles.protocolCard,
-                  selectedProtocol && styles.protocolSelected,
-                  active && styles.protocolDisabled,
+                  styles.protocolChip,
+                  isSelected && styles.protocolChipSelected,
+                  active && !isSelected && styles.protocolDisabled,
                   pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityState={{ selected: selectedProtocol, disabled: Boolean(active) }}
+                accessibilityLabel={`${protocol.name}: ${protocol.detail}`}
+                accessibilityState={{ selected: isSelected, disabled: Boolean(active) }}
               >
-                <Text style={[styles.protocolName, selectedProtocol && styles.protocolNameSelected]}>
+                <Text style={[styles.protocolChipText, isSelected && styles.protocolChipTextSelected]}>
                   {protocol.name}
-                </Text>
-                <Text style={[styles.protocolDetail, selectedProtocol && styles.protocolDetailSelected]}>
-                  {protocol.id === '5:2'
-                    ? '5 regular · 2 low-intake days'
-                    : protocol.id === 'custom'
-                      ? 'Set your own duration'
-                      : protocol.detail.split(' · ')[0]}
                 </Text>
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
+        <Text style={styles.protocolDetail}>
+          {selected.detail}
+        </Text>
 
         {selected.id === 'custom' && !active && (
           <View style={styles.customCard}>
@@ -871,24 +873,23 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   sectionHeading: { marginBottom: spacing.md },
   sectionTitle: { color: colors.text, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
   sectionMeta: { color: colors.textMuted, fontSize: 13, marginTop: 3 },
-  protocolGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
-  protocolCard: {
-    width: '48%',
-    minHeight: 72,
+  protocolHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  protocolLabel: { color: colors.textSubtle, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
+  protocolLocked: { color: colors.textSubtle, fontSize: 11 },
+  protocolScroll: { marginHorizontal: -22 },
+  protocolRow: { gap: 6, paddingHorizontal: 22 },
+  protocolChip: {
+    minHeight: 34,
     justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
   },
-  protocolSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  protocolDisabled: { opacity: 0.62 },
-  protocolName: { color: colors.text, fontSize: 15, fontWeight: '800' },
-  protocolNameSelected: { color: colors.primary },
-  protocolDetail: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
-  protocolDetailSelected: { color: colors.primary },
+  protocolChipSelected: { backgroundColor: colors.heroBackground },
+  protocolDisabled: { opacity: 0.45 },
+  protocolChipText: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  protocolChipTextSelected: { color: colors.onPrimary, fontWeight: '700' },
+  protocolDetail: { color: colors.textMuted, fontSize: 12, marginTop: spacing.sm, marginBottom: spacing.lg },
   customCard: { padding: spacing.lg, marginBottom: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   customLabel: { color: colors.text, fontSize: 14, fontWeight: '700' },
   customControl: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },

@@ -102,7 +102,7 @@ function scheduleId(instance: WorkoutScheduleInstance) {
 export function WorkoutScheduler({ session }: { session: Session }) {
   const today = toDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
-  const [mode, setMode] = useState<CalendarMode>('month');
+  const [mode, setMode] = useState<CalendarMode>('week');
   const [instances, setInstances] = useState<WorkoutScheduleInstance[]>([]);
   const [isFormVisible, setFormVisible] = useState(false);
   const [movingWorkout, setMovingWorkout] = useState<WorkoutScheduleInstance | null>(null);
