@@ -7,7 +7,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PageHeader } from '../components/page-header';
-import { RoundButton } from '../components/round-button';
+import { CalendarToggleButton, CompactCalendar } from '../components/compact-calendar';
 import { WorkoutScheduler } from '../components/workout-scheduler';
 import { EXERCISES, MUSCLE_GROUPS, type MuscleGroup } from '../constants/exercises';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
@@ -16,8 +16,6 @@ import { deleteWorkoutLog, type WorkoutLog } from '../database/workouts';
 import { activityInfo, formatDuration, formatKm } from '../lib/activity';
 import { useWorkouts } from '../hooks/use-workouts';
 import { fromDateKey, toDateKey } from '../lib/dates';
-
-const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 function monthKeyOf(year: number, month: number) {
   return `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -40,18 +38,10 @@ export function Fitness({ session }: { session: Session }) {
   const [group, setGroup] = useState<MuscleGroup | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'schedule' | 'history'>('schedule');
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const monthKey = monthKeyOf(cursor.year, cursor.month);
   const { logs, activities, error, reload } = useWorkouts(session.user.id, monthKey);
-
-  const cells = useMemo(() => {
-    const offset = (new Date(cursor.year, cursor.month, 1).getDay() + 6) % 7;
-    const days = new Date(cursor.year, cursor.month + 1, 0).getDate();
-    return [
-      ...Array.from({ length: offset }, () => null),
-      ...Array.from({ length: days }, (_, index) => index + 1),
-    ];
-  }, [cursor]);
 
   const daysWithLogs = useMemo(
     () => new Set([...logs.map((log) => log.log_date), ...activities.map((a) => a.log_date)]),
@@ -79,6 +69,23 @@ export function Fitness({ session }: { session: Session }) {
     setSelectedKey(isCurrent ? todayKey : toDateKey(next));
   }
 
+  function selectDate(dateKey: string) {
+    const date = fromDateKey(dateKey);
+    if (date.getFullYear() !== cursor.year || date.getMonth() !== cursor.month) {
+      setCursor({ year: date.getFullYear(), month: date.getMonth() });
+    }
+    setSelectedKey(dateKey);
+  }
+
+  function toggleCalendar() {
+    if (activeTab !== 'history') {
+      setActiveTab('history');
+      setCalendarOpen(true);
+      return;
+    }
+    setCalendarOpen((open) => !open);
+  }
+
   function confirmDelete(log: WorkoutLog) {
     Alert.alert(`Remove ${log.exercise_name}?`, undefined, [
       {
@@ -98,10 +105,6 @@ export function Fitness({ session }: { session: Session }) {
     ]);
   }
 
-  const monthTitle = new Date(cursor.year, cursor.month, 1).toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  });
   const selectedTitle = fromDateKey(selectedKey).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'short',
@@ -115,7 +118,16 @@ export function Fitness({ session }: { session: Session }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <PageHeader session={session} title="Fitness" />
+        <PageHeader
+          session={session}
+          title="Fitness"
+          actions={
+            <CalendarToggleButton
+              expanded={activeTab === 'history' && calendarOpen}
+              onPress={toggleCalendar}
+            />
+          }
+        />
 
         <Pressable
           onPress={() => router.push('/activity')}
@@ -152,52 +164,17 @@ export function Fitness({ session }: { session: Session }) {
           <Text style={styles.sectionTitle}>Workout history</Text>
           <Text style={styles.historyMeta}>Logged workouts and activities</Text>
         </View>
-        <View style={styles.card}>
-          <View style={styles.monthRow}>
-            <RoundButton icon="chevron-back" label="Previous month" size={30} iconSize={16} color={colors.textMuted} onPress={() => changeMonth(-1)} />
-            <View style={styles.monthTitleBlock}>
-              <Text style={styles.monthTitle}>{monthTitle}</Text>
-              <Text style={styles.monthMeta}>
-                {daysWithLogs.size} workout {daysWithLogs.size === 1 ? 'day' : 'days'}
-              </Text>
-            </View>
-            <RoundButton icon="chevron-forward" label="Next month" size={30} iconSize={16} color={colors.textMuted} onPress={() => changeMonth(1)} />
-          </View>
-
-          <View style={styles.grid}>
-            {WEEKDAYS.map((day, index) => (
-              <Text key={`${day}${index}`} style={styles.weekday}>
-                {day}
-              </Text>
-            ))}
-            {cells.map((day, index) => {
-              if (day === null) return <View key={`blank-${index}`} style={styles.cell} />;
-              const key = `${monthKey}-${String(day).padStart(2, '0')}`;
-              const selected = key === selectedKey;
-              const isToday = key === todayKey;
-              return (
-                <Pressable
-                  key={key}
-                  onPress={() => setSelectedKey(key)}
-                  style={styles.cell}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`${day}${daysWithLogs.has(key) ? ', workout logged' : ''}`}
-                >
-                  <View style={[styles.day, isToday && styles.dayToday, selected && styles.daySelected]}>
-                    <Text style={[styles.dayText, selected && styles.dayTextSelected]}>{day}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.marker,
-                      daysWithLogs.has(key) && (selected ? styles.markerOnSelected : styles.markerOn),
-                    ]}
-                  />
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+        <CompactCalendar
+          selectedDate={selectedKey}
+          onSelectDate={selectDate}
+          month={cursor}
+          onChangeMonth={changeMonth}
+          expanded={calendarOpen}
+          onExpandedChange={setCalendarOpen}
+          isMarked={(dateKey) => daysWithLogs.has(dateKey)}
+          markedLabel="workout logged"
+          meta={`${daysWithLogs.size} workout ${daysWithLogs.size === 1 ? 'day' : 'days'}`}
+        />
 
         <View style={styles.sectionHeading}>
           <Text style={styles.sectionTitle}>{selectedTitle}</Text>
@@ -379,35 +356,6 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   historyHeading: { marginTop: spacing.sm, marginBottom: spacing.md },
   historyMeta: { color: colors.textMuted, fontSize: 13, marginTop: spacing.xs },
   activityIcon: { backgroundColor: colors.accentSoft },
-  card: {
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  monthTitleBlock: { alignItems: 'center' },
-  monthTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  monthMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.md },
-  weekday: {
-    width: '14.2857%',
-    textAlign: 'center',
-    color: colors.textSubtle,
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
-  },
-  cell: { width: '14.2857%', height: 42, alignItems: 'center', justifyContent: 'center' },
-  day: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
-  dayToday: { borderWidth: 1, borderColor: colors.primary },
-  daySelected: { backgroundColor: colors.heroBackground, borderColor: colors.heroBackground },
-  dayText: { color: colors.text, fontSize: 14, fontWeight: '600' },
-  dayTextSelected: { color: colors.onPrimary },
-  marker: { width: 5, height: 5, borderRadius: 3, marginTop: 2, backgroundColor: 'transparent' },
-  markerOn: { backgroundColor: colors.accent },
-  markerOnSelected: { backgroundColor: colors.accent },
   sectionHeading: {
     flexDirection: 'row',
     alignItems: 'baseline',

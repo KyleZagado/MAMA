@@ -61,7 +61,8 @@ sign-in screens, and the status bar.
 Swipe to **Overview Tracker** for a monthly calendar combining activity from
 Wallets & finance, To-do list, Food and water, Fitness, Fasting Tracker, and
 Daily Journal.
-Days with logged activity are marked in the calendar. Select a date to see its
+A compact week strip is shown by default; tap the calendar icon in the header
+for the full month. Days with logged activity are marked. Select a date to see its
 transactions, scheduled tasks (including recurring occurrences), meals, water
 entries, workouts, recorded activities, and fasting sessions. The calendar also
 shows a monthly activity count and the number of active days. Activity is read

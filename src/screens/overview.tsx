@@ -3,17 +3,15 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Session } from '@supabase/supabase-js';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PageHeader } from '../components/page-header';
-import { RoundButton } from '../components/round-button';
+import { CalendarToggleButton, CompactCalendar } from '../components/compact-calendar';
 import { lightColors as colors, MAX_CONTENT_WIDTH, radius, spacing } from '../constants/theme';
 import { getDatabase } from '../database';
 import { loadOverviewCalendar, type OverviewActivity, type OverviewActivityType } from '../database/overview';
 import { fromDateKey, toDateKey } from '../lib/dates';
-
-const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 const ACTIVITY_STYLE: Record<
   OverviewActivityType,
@@ -59,10 +57,6 @@ function timeLabel(timestamp: number) {
   return new Date(timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-function monthLabel(year: number, month: number) {
-  return new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-}
-
 export function Overview({ session, isVisible = true }: { session: Session; isVisible?: boolean }) {
   const today = toDateKey(new Date());
   const [cursor, setCursor] = useState(() => {
@@ -73,20 +67,11 @@ export function Overview({ session, isVisible = true }: { session: Session; isVi
   const [activities, setActivities] = useState<OverviewActivity[]>([]);
   const [monthCounts, setMonthCounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
 
   const range = useMemo(() => monthRange(cursor.year, cursor.month), [cursor]);
-  const cells = useMemo(() => {
-    const offset = (new Date(cursor.year, cursor.month, 1).getDay() + 6) % 7;
-    const days = new Date(cursor.year, cursor.month + 1, 0).getDate();
-    const monthKey = monthKeyOf(cursor.year, cursor.month);
-    return [
-      ...Array.from({ length: offset }, () => null),
-      ...Array.from({ length: days }, (_, index) => `${monthKey}-${String(index + 1).padStart(2, '0')}`),
-    ];
-  }, [cursor]);
-
   const reload = useCallback(async () => {
       const token = ++request.current;
       setIsLoading(true);
@@ -143,6 +128,14 @@ export function Overview({ session, isVisible = true }: { session: Session; isVi
     setSelectedDate(toDateKey(next));
   }
 
+  function selectDate(dateKey: string) {
+    const date = fromDateKey(dateKey);
+    if (date.getFullYear() !== cursor.year || date.getMonth() !== cursor.month) {
+      setCursor({ year: date.getFullYear(), month: date.getMonth() });
+    }
+    setSelectedDate(dateKey);
+  }
+
   function renderActivity(activity: OverviewActivity) {
     const visual = ACTIVITY_STYLE[activity.type];
     return (
@@ -165,7 +158,16 @@ export function Overview({ session, isVisible = true }: { session: Session; isVi
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <PageHeader session={session} title="Overview" />
+        <PageHeader
+          session={session}
+          title="Overview"
+          actions={
+            <CalendarToggleButton
+              expanded={calendarOpen}
+              onPress={() => setCalendarOpen((open) => !open)}
+            />
+          }
+        />
 
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
@@ -178,48 +180,18 @@ export function Overview({ session, isVisible = true }: { session: Session; isVi
           </View>
         </View>
 
-        <View style={styles.calendarCard}>
-          <View style={styles.monthRow}>
-            <RoundButton icon="chevron-back" label="Previous month" size={30} iconSize={16} color={colors.textMuted} onPress={() => changeMonth(-1)} />
-            <View style={styles.monthTitleBlock}>
-              <Text style={styles.monthTitle}>{monthLabel(cursor.year, cursor.month)}</Text>
-              <View style={styles.monthMetaRow}>
-                <Text style={styles.monthMeta}>
-                  {activeDays} active {activeDays === 1 ? 'day' : 'days'}
-                </Text>
-                {isLoading && <ActivityIndicator size="small" color={colors.textSubtle} />}
-              </View>
-            </View>
-            <RoundButton icon="chevron-forward" label="Next month" size={30} iconSize={16} color={colors.textMuted} onPress={() => changeMonth(1)} />
-          </View>
-          <View style={styles.calendarGrid}>
-            {WEEKDAYS.map((day, index) => (
-              <Text key={`${day}-${index}`} style={styles.weekday}>{day}</Text>
-            ))}
-            {cells.map((dateKey, index) => {
-              if (dateKey === null) return <View key={`blank-${index}`} style={styles.dayCell} />;
-              const isSelected = dateKey === selectedDate;
-              const count = monthCounts[dateKey] ?? 0;
-              return (
-                <Pressable
-                  key={dateKey}
-                  onPress={() => setSelectedDate(dateKey)}
-                  style={styles.dayCell}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${dayTitle(dateKey)}${count ? `, ${count} activities` : ', no activity'}`}
-                  accessibilityState={{ selected: isSelected }}
-                >
-                  <View style={[styles.day, dateKey === today && styles.today, isSelected && styles.selectedDay]}>
-                    <Text style={[styles.dayNumber, isSelected && styles.selectedDayNumber]}>
-                      {fromDateKey(dateKey).getDate()}
-                    </Text>
-                  </View>
-                  <View style={[styles.marker, count > 0 && styles.markerOn]} />
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+        <CompactCalendar
+          selectedDate={selectedDate}
+          onSelectDate={selectDate}
+          month={cursor}
+          onChangeMonth={changeMonth}
+          expanded={calendarOpen}
+          onExpandedChange={setCalendarOpen}
+          isMarked={(dateKey) => (monthCounts[dateKey] ?? 0) > 0}
+          markedLabel="activity logged"
+          meta={`${activeDays} active ${activeDays === 1 ? 'day' : 'days'}`}
+          isLoading={isLoading}
+        />
 
         <View style={styles.selectedHeading}>
           <View>
@@ -302,22 +274,6 @@ const styles = createThemedStyleSheet((colors) => StyleSheet.create({
   summaryCard: { flex: 1, padding: spacing.lg, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   summaryValue: { color: colors.text, fontSize: 24, fontWeight: '800' },
   summaryLabel: { color: colors.textMuted, fontSize: 12, marginTop: spacing.xs },
-  calendarCard: { padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  monthTitleBlock: { alignItems: 'center' },
-  monthTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  monthMetaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: 2 },
-  monthMeta: { color: colors.textMuted, fontSize: 12 },
-  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.md },
-  weekday: { width: '14.2857%', textAlign: 'center', color: colors.textSubtle, fontSize: 12, fontWeight: '700', marginBottom: spacing.sm },
-  dayCell: { width: '14.2857%', height: 42, alignItems: 'center', justifyContent: 'center' },
-  day: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
-  today: { borderWidth: 1, borderColor: colors.primary },
-  selectedDay: { backgroundColor: colors.heroBackground, borderColor: colors.heroBackground },
-  dayNumber: { color: colors.text, fontSize: 14, fontWeight: '600' },
-  selectedDayNumber: { color: colors.onPrimary },
-  marker: { width: 5, height: 5, borderRadius: 3, marginTop: 2, backgroundColor: 'transparent' },
-  markerOn: { backgroundColor: colors.accent },
   selectedHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.xl, marginBottom: spacing.md },
   sectionTitle: { color: colors.text, fontSize: 19, fontWeight: '800' },
   sectionMeta: { color: colors.textMuted, fontSize: 13, marginTop: 3 },
